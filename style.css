@@ -1,0 +1,675 @@
+/* ========== RESET & BASE ========== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary: #e94560;
+    --primary-dark: #c73652;
+    --secondary: #16213e;
+    --dark: #0f3460;
+    --bg: #1a1a2e;
+    --bg-light: #222244;
+    --text: #e0e0e0;
+    --text-muted: #888;
+    --success: #2ecc71;
+    --danger: #e74c3c;
+    --warning: #f39c12;
+    --admin: #9b59b6;
+    --border: #333;
+    --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --radius: 12px;
+    --transition: all 0.3s ease;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    width: 100%;
+}
+
+/* ========== SCROLLBAR ========== */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+
+/* ========== HEADER ========== */
+.header {
+    background: linear-gradient(135deg, var(--secondary), var(--dark));
+    padding: 15px 0;
+    border-bottom: 3px solid var(--primary);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.logo h1 {
+    font-size: 28px;
+    color: var(--primary);
+    text-shadow: 0 0 20px rgba(233, 69, 96, 0.3);
+    letter-spacing: 1px;
+}
+
+.logo span {
+    font-size: 13px;
+    opacity: 0.6;
+    display: block;
+    margin-top: -5px;
+}
+
+/* ========== USER PANEL ========== */
+.user-panel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 5px 15px 5px 10px;
+    border-radius: 50px;
+}
+
+.avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+#currentUser {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.badge-admin {
+    background: var(--admin);
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: bold;
+    animation: glow 2s infinite;
+}
+
+@keyframes glow {
+    0%, 100% { box-shadow: 0 0 5px var(--admin); }
+    50% { box-shadow: 0 0 20px var(--admin); }
+}
+
+/* ========== BUTTONS ========== */
+.btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: var(--transition);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+}
+
+.btn:active {
+    transform: scale(0.95);
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+.btn-primary:hover {
+    background: var(--primary-dark);
+}
+
+.btn-success {
+    background: var(--success);
+    color: white;
+}
+.btn-success:hover {
+    background: #27ae60;
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: white;
+}
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: var(--warning);
+    color: white;
+}
+.btn-warning:hover {
+    background: #d68910;
+}
+
+.btn-admin {
+    background: var(--admin);
+    color: white;
+}
+.btn-admin:hover {
+    background: #8e44ad;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+}
+.btn-outline:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-sm {
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+/* ========== STATS BAR ========== */
+.stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    background: var(--secondary);
+    padding: 20px;
+    border-radius: var(--radius);
+    margin-bottom: 25px;
+    border: 1px solid rgba(233, 69, 96, 0.1);
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary);
+    display: block;
+}
+
+.stat-label {
+    font-size: 13px;
+    opacity: 0.6;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ========== FORUM SECTIONS ========== */
+#categoriesContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.forum-section {
+    background: var(--secondary);
+    border-radius: var(--radius);
+    padding: 25px;
+    border-left: 4px solid var(--primary);
+    transition: var(--transition);
+}
+
+.forum-section:hover {
+    border-left-color: var(--warning);
+    transform: translateX(5px);
+}
+
+.forum-section h2 {
+    color: var(--primary);
+    font-size: 22px;
+    margin-bottom: 5px;
+}
+
+.forum-section .subtitle {
+    opacity: 0.6;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+/* ========== TOPIC LIST ========== */
+.topic-list {
+    list-style: none;
+}
+
+.topic-item {
+    background: var(--bg);
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: var(--transition);
+    border-left: 3px solid transparent;
+}
+
+.topic-item:hover {
+    border-left-color: var(--primary);
+    background: var(--bg-light);
+    transform: translateX(5px);
+}
+
+.topic-info {
+    flex: 1;
+    cursor: pointer;
+}
+
+.topic-info h3 {
+    color: var(--primary);
+    font-size: 17px;
+    transition: var(--transition);
+}
+
+.topic-info h3:hover {
+    text-decoration: underline;
+}
+
+.topic-info .meta {
+    font-size: 13px;
+    opacity: 0.5;
+    margin-top: 4px;
+}
+
+.topic-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+/* ========== THREAD VIEW ========== */
+.back-btn {
+    margin-bottom: 20px;
+}
+
+.thread-header {
+    background: var(--secondary);
+    padding: 25px;
+    border-radius: var(--radius);
+    margin-bottom: 25px;
+    border-left: 4px solid var(--primary);
+}
+
+.thread-header h2 {
+    color: var(--primary);
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.thread-header .meta {
+    opacity: 0.6;
+    font-size: 14px;
+}
+
+.thread-content {
+    background: var(--bg);
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 15px;
+    line-height: 1.8;
+}
+
+/* ========== POSTS ========== */
+#postsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.post-item {
+    background: var(--bg);
+    padding: 18px 20px;
+    border-radius: 8px;
+    border-left: 3px solid var(--success);
+    transition: var(--transition);
+}
+
+.post-item:hover {
+    background: var(--bg-light);
+}
+
+.post-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.post-author {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.post-date {
+    font-size: 12px;
+    opacity: 0.5;
+}
+
+.post-content {
+    line-height: 1.7;
+}
+
+/* ========== EMPTY STATE ========== */
+.empty-message {
+    text-align: center;
+    padding: 40px 20px;
+    opacity: 0.6;
+    font-size: 16px;
+}
+
+/* ========== LOADING ========== */
+.loading-spinner {
+    text-align: center;
+    padding: 40px;
+    color: var(--primary);
+    font-size: 18px;
+}
+
+.loading-spinner::after {
+    content: '...';
+    animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+    0% { content: '.'; }
+    33% { content: '..'; }
+    66% { content: '...'; }
+}
+
+/* ========== MODALS ========== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.modal.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: var(--secondary);
+    padding: 35px;
+    border-radius: var(--radius);
+    width: 460px;
+    max-width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 1px solid rgba(233, 69, 96, 0.2);
+    position: relative;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 28px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.modal-close:hover {
+    color: var(--primary);
+    transform: rotate(90deg);
+}
+
+.modal-content h2 {
+    color: var(--primary);
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.modal-switch {
+    text-align: center;
+    margin-top: 18px;
+    opacity: 0.6;
+}
+
+.modal-switch span {
+    color: var(--primary);
+    cursor: pointer;
+    font-weight: 600;
+}
+.modal-switch span:hover {
+    text-decoration: underline;
+}
+
+/* ========== FORMS ========== */
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    width: 100%;
+    padding: 12px 15px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: white;
+    font-size: 15px;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.2);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-group select {
+    appearance: none;
+    cursor: pointer;
+}
+
+/* ========== DIVIDER ========== */
+.divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 25px 0;
+}
+
+/* ========== ADMIN SECTION IN MODAL ========== */
+.admin-section {
+    margin-bottom: 20px;
+}
+
+.admin-section h3 {
+    color: var(--success);
+    margin-bottom: 15px;
+}
+
+/* ========== TOAST ========== */
+.toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: var(--secondary);
+    padding: 16px 28px;
+    border-radius: var(--radius);
+    border-left: 4px solid var(--success);
+    display: none;
+    z-index: 2000;
+    box-shadow: var(--shadow);
+    max-width: 400px;
+    animation: slideIn 0.4s ease;
+}
+
+.toast.error {
+    border-left-color: var(--danger);
+}
+
+.toast.show {
+    display: block;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* ========== FOOTER ========== */
+.footer {
+    background: var(--secondary);
+    padding: 25px 0;
+    text-align: center;
+    margin-top: 40px;
+    border-top: 1px solid var(--border);
+}
+
+.footer p {
+    opacity: 0.5;
+    font-size: 14px;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .user-panel {
+        justify-content: center;
+    }
+
+    .topic-item {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+
+    .topic-actions {
+        justify-content: flex-end;
+    }
+
+    .modal-content {
+        padding: 25px;
+    }
+
+    .stats-bar {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .stat-value {
+        font-size: 22px;
+    }
+
+    .forum-section {
+        padding: 18px;
+    }
+
+    .logo h1 {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0 12px;
+    }
+
+    .btn {
+        padding: 6px 14px;
+        font-size: 12px;
+    }
+
+    .modal-content {
+        padding: 20px;
+    }
+
+    .user-info {
+        padding: 4px 10px 4px 6px;
+    }
+}

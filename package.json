@@ -1,0 +1,12 @@
+{
+  "name": "arizona-rp-forum",
+  "version": "1.0.0",
+  "description": "RolePlay Forum with Firebase",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": ["forum", "firebase", "roleplay"],
+  "author": "",
+  "license": "MIT"
+}
