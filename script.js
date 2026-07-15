@@ -971,7 +971,7 @@ window.verifyAdmin = async function() {
         return;
     }
 
-    if (password === '1267') {
+    if (password === 'ananas') {
         if (currentUser) {
             try {
                 await setDoc(doc(db, 'admins', currentUser.uid), {
