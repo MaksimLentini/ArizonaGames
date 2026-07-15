@@ -76,6 +76,7 @@ async function checkAdminStatus(uid) {
         updateUI();
     } catch (error) {
         console.error('Admin check error:', error);
+        isAdmin = false;
     }
 }
 
@@ -180,9 +181,6 @@ window.logoutUser = async function() {
 // ============================================
 window.verifyAdmin = async function() {
     const password = document.getElementById('adminPassword').value.trim();
-    const btn = document.querySelector('#adminModal .admin-verify .btn-admin');
-    const label = document.querySelector('#adminModal .admin-verify .btn-admin span');
-    const originalText = label ? label.textContent : 'Получить права';
 
     if (password === '1267') {
         if (currentUser) {
@@ -200,6 +198,8 @@ window.verifyAdmin = async function() {
             } catch (error) {
                 showToast('Ошибка: ' + error.message, 'error');
             }
+        } else {
+            showToast('Сначала войдите в аккаунт', 'error');
         }
     } else {
         showToast('Неверный код', 'error');
@@ -228,7 +228,7 @@ window.addCategory = async function() {
             name: name,
             description: description || 'Описание отсутствует',
             createdAt: serverTimestamp(),
-            createdBy: currentUser.uid
+            createdBy: currentUser ? currentUser.uid : 'anonymous'
         });
 
         document.getElementById('newCategoryName').value = '';
@@ -324,6 +324,9 @@ function updateUI() {
                 userName.textContent = data.username || currentUser.email;
                 avatar.textContent = (data.username || currentUser.email)[0].toUpperCase();
             }
+        }).catch(() => {
+            userName.textContent = currentUser.email;
+            avatar.textContent = currentUser.email[0].toUpperCase();
         });
         userInfo.style.display = 'flex';
         adminBadge.style.display = isAdmin ? 'inline' : 'none';
@@ -361,6 +364,7 @@ async function renderCategories() {
                         <span class="empty-icon">📋</span>
                         <p>Нет созданных разделов</p>
                         ${isAdmin ? '<p style="color: var(--primary-light); font-size: 13px;">Используйте админ-панель для создания разделов</p>' : ''}
+                        <p style="color: var(--text-muted); font-size: 12px; margin-top: 8px;">Войдите как администратор (пароль 1267) чтобы создать раздел</p>
                     </div>
                 </div>
             `;
@@ -416,7 +420,16 @@ async function renderCategories() {
         updateHeroStats();
     } catch (error) {
         console.error('Render error:', error);
-        container.innerHTML = `<div class="empty-state"><span class="empty-icon">⚠️</span><p>Ошибка загрузки данных</p></div>`;
+        container.innerHTML = `
+            <div class="forum-category">
+                <div class="empty-state">
+                    <span class="empty-icon">⚠️</span>
+                    <p>Ошибка загрузки данных</p>
+                    <p style="font-size: 12px; color: var(--text-muted);">Проверьте подключение к Firebase</p>
+                    <button class="btn btn-primary" onclick="renderCategories()" style="margin-top: 12px;">Обновить</button>
+                </div>
+            </div>
+        `;
     }
 }
 
@@ -439,9 +452,13 @@ window.openThread = async function(threadId) {
         }
         const thread = { id: threadDoc.id, ...threadDoc.data() };
 
-        await updateDoc(doc(db, 'threads', threadId), {
-            views: (thread.views || 0) + 1
-        });
+        try {
+            await updateDoc(doc(db, 'threads', threadId), {
+                views: (thread.views || 0) + 1
+            });
+        } catch (e) {
+            console.log('Views update skipped');
+        }
 
         const postsQuery = query(
             collection(db, 'posts'),
@@ -528,12 +545,16 @@ window.addPost = async function(threadId) {
             createdAt: serverTimestamp()
         });
 
-        const threadDoc = await getDoc(doc(db, 'threads', threadId));
-        if (threadDoc.exists()) {
-            const thread = threadDoc.data();
-            await updateDoc(doc(db, 'threads', threadId), {
-                replies: (thread.replies || 0) + 1
-            });
+        try {
+            const threadDoc = await getDoc(doc(db, 'threads', threadId));
+            if (threadDoc.exists()) {
+                const thread = threadDoc.data();
+                await updateDoc(doc(db, 'threads', threadId), {
+                    replies: (thread.replies || 0) + 1
+                });
+            }
+        } catch (e) {
+            console.log('Replies update skipped');
         }
 
         document.getElementById('newPostContent').value = '';
@@ -547,98 +568,6 @@ window.addPost = async function(threadId) {
 window.showCategoriesView = function() {
     document.getElementById('threadView').style.display = 'none';
     document.getElementById('categoriesView').style.display = 'block';
-    renderCategories();
-};
-
-window.showPage = function(page) {
-    const forumView = document.getElementById('forumView');
-    const pageView = document.getElementById('pageView');
-    const container = document.getElementById('pageContainer');
-    
-    forumView.style.display = 'none';
-    pageView.style.display = 'block';
-    
-    const pages = {
-        rules: {
-            title: '📜 Правила сообщества',
-            subtitle: 'Основные правила поведения на форуме Arizona RP',
-            sections: [
-                { title: '1. Уважение к участникам', content: 'Относитесь с уважением ко всем участникам сообщества. Запрещены: оскорбления, угрозы, дискриминация, травля и любое другое неуважительное поведение.' },
-                { title: '2. Запрещенный контент', content: 'Запрещена публикация: порнографического контента, материалов, пропагандирующих насилие или экстремизм, спама, рекламы без разрешения администрации.' },
-                { title: '3. Правила общения', content: 'Общайтесь на русском языке в основных разделах. Используйте понятные заголовки для тем. Не создавайте дублирующиеся темы. Не флудите и не офтопьте.' },
-                { title: '4. Нарушения и наказания', content: 'За нарушение правил предусмотрены: предупреждение, временный бан или перманентная блокировка аккаунта.' }
-            ]
-        },
-        help: {
-            title: '❓ Помощь',
-            subtitle: 'Часто задаваемые вопросы и руководства',
-            sections: [
-                { title: 'Как зарегистрироваться?', content: 'Нажмите на кнопку "Регистрация" в правом верхнем углу, заполните форму с указанием имени пользователя, email и пароля.' },
-                { title: 'Как создать тему?', content: 'Вам нужно получить права администратора (пароль 1267). После этого в админ-панели выберите раздел, введите название и содержание темы.' },
-                { title: 'Как получить права администратора?', content: 'Нажмите на кнопку "Админ" и введите пароль 1267. После этого вы сможете создавать разделы и темы, а также удалять темы.' }
-            ]
-        },
-        contact: {
-            title: '📞 Контакты',
-            subtitle: 'Свяжитесь с администрацией форума',
-            contacts: [
-                { icon: '📧', label: 'Email', value: 'support@arizona-rp.com' },
-                { icon: '💬', label: 'Discord', value: 'discord.gg/arizona-rp' },
-                { icon: '📱', label: 'Telegram', value: '@arizona_rp_support' }
-            ]
-        },
-        privacy: {
-            title: '🔒 Политика конфиденциальности',
-            subtitle: 'Как мы обрабатываем ваши данные',
-            sections: [
-                { title: 'Какие данные мы собираем', content: 'При регистрации мы собираем: имя пользователя, email и пароль. Также мы собираем данные о вашей активности на форуме.' },
-                { title: 'Как мы используем данные', content: 'Ваши данные используются для: авторизации на форуме, отображения вашего профиля, улучшения работы сервиса.' },
-                { title: 'Безопасность данных', content: 'Мы используем Firebase для хранения данных. Все данные защищены шифрованием. Пароли хранятся в зашифрованном виде.' }
-            ]
-        }
-    };
-    
-    const pageData = pages[page];
-    if (!pageData) return;
-    
-    let html = `
-        <div class="page-content">
-            <h1>${pageData.title}</h1>
-            <div class="page-subtitle">${pageData.subtitle}</div>
-    `;
-    
-    if (pageData.sections) {
-        pageData.sections.forEach(section => {
-            html += `
-                <div class="page-section">
-                    <h2>${section.title}</h2>
-                    <p>${section.content.replace(/\n/g, '<br>')}</p>
-                </div>
-            `;
-        });
-    }
-    
-    if (pageData.contacts) {
-        pageData.contacts.forEach(contact => {
-            html += `
-                <div class="contact-item">
-                    <span class="contact-icon">${contact.icon}</span>
-                    <div class="contact-info">
-                        <div class="contact-label">${contact.label}</div>
-                        <div class="contact-value">${contact.value}</div>
-                    </div>
-                </div>
-            `;
-        });
-    }
-    
-    html += '</div>';
-    container.innerHTML = html;
-};
-
-window.closePage = function() {
-    document.getElementById('pageView').style.display = 'none';
-    document.getElementById('forumView').style.display = 'block';
     renderCategories();
 };
 
@@ -755,29 +684,133 @@ window.switchModal = function(closeId, openId) {
 };
 
 // ============================================
-// REAL-TIME UPDATES (теперь onSnapshot определен!)
+// PAGE FUNCTIONS
 // ============================================
-onSnapshot(collection(db, 'categories'), () => {
-    if (!document.getElementById('threadView').style.display || 
-        document.getElementById('threadView').style.display === 'none') {
-        if (!document.getElementById('pageView').style.display || 
-            document.getElementById('pageView').style.display === 'none') {
-            renderCategories();
+window.showPage = function(page) {
+    const forumView = document.getElementById('forumView');
+    const pageView = document.getElementById('pageView');
+    const container = document.getElementById('pageContainer');
+    
+    forumView.style.display = 'none';
+    pageView.style.display = 'block';
+    
+    const pages = {
+        rules: {
+            title: '📜 Правила сообщества',
+            subtitle: 'Основные правила поведения на форуме Arizona RP',
+            sections: [
+                { title: '1. Уважение к участникам', content: 'Относитесь с уважением ко всем участникам сообщества. Запрещены: оскорбления, угрозы, дискриминация, травля.' },
+                { title: '2. Запрещенный контент', content: 'Запрещена публикация: порнографического контента, материалов, пропагандирующих насилие, спама, рекламы без разрешения.' },
+                { title: '3. Правила общения', content: 'Общайтесь на русском языке в основных разделах. Используйте понятные заголовки для тем. Не создавайте дублирующиеся темы.' }
+            ]
+        },
+        help: {
+            title: '❓ Помощь',
+            subtitle: 'Часто задаваемые вопросы',
+            sections: [
+                { title: 'Как зарегистрироваться?', content: 'Нажмите на кнопку "Регистрация" в правом верхнем углу, заполните форму.' },
+                { title: 'Как создать тему?', content: 'Получите права администратора (пароль 1267). Затем в админ-панели создайте тему.' },
+                { title: 'Как получить права администратора?', content: 'Нажмите на кнопку "Админ" и введите пароль 1267.' }
+            ]
+        },
+        contact: {
+            title: '📞 Контакты',
+            subtitle: 'Свяжитесь с администрацией',
+            contacts: [
+                { icon: '📧', label: 'Email', value: 'support@arizona-rp.com' },
+                { icon: '💬', label: 'Discord', value: 'discord.gg/arizona-rp' },
+                { icon: '📱', label: 'Telegram', value: '@arizona_rp_support' }
+            ]
+        },
+        privacy: {
+            title: '🔒 Конфиденциальность',
+            subtitle: 'Как мы обрабатываем ваши данные',
+            sections: [
+                { title: 'Какие данные мы собираем', content: 'Имя пользователя, email, пароль. Данные о активности на форуме.' },
+                { title: 'Как мы используем данные', content: 'Для авторизации, отображения профиля, улучшения работы сервиса.' },
+                { title: 'Безопасность данных', content: 'Все данные защищены шифрованием. Пароли хранятся в зашифрованном виде.' }
+            ]
         }
+    };
+    
+    const pageData = pages[page];
+    if (!pageData) return;
+    
+    let html = `
+        <div class="page-content">
+            <h1>${pageData.title}</h1>
+            <div class="page-subtitle">${pageData.subtitle}</div>
+    `;
+    
+    if (pageData.sections) {
+        pageData.sections.forEach(section => {
+            html += `
+                <div class="page-section">
+                    <h2>${section.title}</h2>
+                    <p>${section.content.replace(/\n/g, '<br>')}</p>
+                </div>
+            `;
+        });
     }
-});
+    
+    if (pageData.contacts) {
+        pageData.contacts.forEach(contact => {
+            html += `
+                <div class="contact-item">
+                    <span class="contact-icon">${contact.icon}</span>
+                    <div class="contact-info">
+                        <div class="contact-label">${contact.label}</div>
+                        <div class="contact-value">${contact.value}</div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    container.innerHTML = html;
+};
 
-onSnapshot(collection(db, 'threads'), () => {
-    if (!document.getElementById('threadView').style.display || 
-        document.getElementById('threadView').style.display === 'none') {
-        if (!document.getElementById('pageView').style.display || 
-            document.getElementById('pageView').style.display === 'none') {
-            renderCategories();
+window.closePage = function() {
+    document.getElementById('pageView').style.display = 'none';
+    document.getElementById('forumView').style.display = 'block';
+    renderCategories();
+};
+
+// ============================================
+// REAL-TIME UPDATES
+// ============================================
+try {
+    onSnapshot(collection(db, 'categories'), () => {
+        if (!document.getElementById('threadView').style.display || 
+            document.getElementById('threadView').style.display === 'none') {
+            if (!document.getElementById('pageView').style.display || 
+                document.getElementById('pageView').style.display === 'none') {
+                renderCategories();
+            }
         }
-    }
-});
+    });
+} catch (e) {
+    console.log('Categories listener error:', e);
+}
 
-// Обновляем онлайн
+try {
+    onSnapshot(collection(db, 'threads'), () => {
+        if (!document.getElementById('threadView').style.display || 
+            document.getElementById('threadView').style.display === 'none') {
+            if (!document.getElementById('pageView').style.display || 
+                document.getElementById('pageView').style.display === 'none') {
+                renderCategories();
+            }
+        }
+    });
+} catch (e) {
+    console.log('Threads listener error:', e);
+}
+
+// ============================================
+// ONLINE COUNT
+// ============================================
 setInterval(() => {
     const online = document.getElementById('heroOnline');
     if (online) {
@@ -791,3 +824,8 @@ window.refreshForum = function() {
 };
 
 console.log('🚀 Arizona RP Форум загружен!');
+
+// ПЕРВЫЙ ЗАПУСК
+setTimeout(() => {
+    renderCategories();
+}, 500);
