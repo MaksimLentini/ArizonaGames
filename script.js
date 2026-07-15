@@ -33,6 +33,7 @@ let currentThreadId = null;
 let currentUserData = null;
 let isAdmin = false;
 let userRank = 'player';
+let adminChecked = false;
 
 // ============================================
 // РАНГИ
@@ -131,6 +132,7 @@ onAuthStateChanged(auth, async (user) => {
         currentUserData = null;
         isAdmin = false;
         userRank = 'player';
+        adminChecked = false;
         updateUI();
         renderCategories();
     }
@@ -170,6 +172,17 @@ async function loadUserData(uid) {
         }
     } catch (error) {
         console.error('Load user data error:', error);
+        // Создаём минимальные данные, чтобы не было ошибок
+        currentUserData = {
+            username: currentUser.email.split('@')[0],
+            email: currentUser.email,
+            bio: 'Новый игрок',
+            avatar: '',
+            rank: 'player',
+            followers: [],
+            following: []
+        };
+        userRank = 'player';
     }
 }
 
@@ -177,14 +190,19 @@ async function checkAdminStatus(uid) {
     try {
         const adminDoc = await getDoc(doc(db, 'admins', uid));
         isAdmin = adminDoc.exists();
+        adminChecked = true;
+        
         if (isAdmin && userRank !== 'owner' && userRank !== 'admin') {
             await updateDoc(doc(db, 'users', uid), { rank: 'admin' });
             userRank = 'admin';
+            // Автоматически показываем админ-панель
+            document.getElementById('adminActions').style.display = 'block';
         }
         updateUI();
     } catch (error) {
         console.error('Admin check error:', error);
         isAdmin = false;
+        adminChecked = true;
     }
 }
 
@@ -375,7 +393,13 @@ window.openProfile = async function(e, userId = null) {
         `;
     } catch (error) {
         console.error('Profile render error:', error);
-        container.innerHTML = `<div class="empty-state"><span class="empty-icon">⚠️</span><p>Ошибка загрузки профиля</p></div>`;
+        container.innerHTML = `
+            <div class="empty-state">
+                <span class="empty-icon">⚠️</span>
+                <p>Ошибка загрузки профиля</p>
+                <button class="btn btn-primary" onclick="openProfile(event, '${targetUid}')" style="margin-top:12px;">Попробовать снова</button>
+            </div>
+        `;
     }
 };
 
@@ -429,6 +453,8 @@ window.openProfileEdit = function() {
         document.getElementById('editBio').value = data.bio || '';
         document.getElementById('editAvatar').value = data.avatar || '';
         openModal('profileEditModal');
+    }).catch(() => {
+        showToast('Ошибка загрузки данных профиля', 'error');
     });
 };
 
@@ -629,20 +655,22 @@ window.logoutUser = async function() {
 };
 
 // ============================================
-// ADMIN (БЕЗ ПОДСКАЗОК ПРО ПАРОЛЬ)
+// ADMIN - БЕЗ ПОДСКАЗОК И БЕЗ ДУБЛИРОВАНИЯ
 // ============================================
 window.verifyAdmin = async function() {
     const password = document.getElementById('adminPassword').value.trim();
 
+    // Если уже админ - просто показываем панель
+    if (isAdmin) {
+        document.getElementById('adminActions').style.display = 'block';
+        document.getElementById('adminPassword').value = '';
+        showToast('Вы уже администратор', 'warning');
+        return;
+    }
+
     if (password === '1267') {
         if (currentUser) {
             try {
-                const adminDoc = await getDoc(doc(db, 'admins', currentUser.uid));
-                if (adminDoc.exists()) {
-                    showToast('Вы уже администратор', 'warning');
-                    return;
-                }
-                
                 await setDoc(doc(db, 'admins', currentUser.uid), {
                     uid: currentUser.uid,
                     grantedAt: serverTimestamp()
@@ -669,6 +697,18 @@ window.verifyAdmin = async function() {
         showToast('Неверный код', 'error');
     }
 };
+
+// Автоматически показываем админ-панель при открытии модалки, если уже админ
+document.addEventListener('DOMContentLoaded', () => {
+    // Отслеживаем открытие админ-модалки
+    const adminModal = document.getElementById('adminModal');
+    const observer = new MutationObserver(() => {
+        if (adminModal.classList.contains('active') && isAdmin) {
+            document.getElementById('adminActions').style.display = 'block';
+        }
+    });
+    observer.observe(adminModal, { attributes: true, attributeFilter: ['class'] });
+});
 
 // ============================================
 // CATEGORIES
