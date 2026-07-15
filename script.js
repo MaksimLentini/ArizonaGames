@@ -1,15 +1,9 @@
-// ============================================
-// ОСНОВНОЙ СКРИПТ ФОРУМА
-// ============================================
-
 import { 
     getAuth, 
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     signOut,
-    onAuthStateChanged,
-    sendEmailVerification,
-    sendPasswordResetEmail
+    onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 import {
@@ -29,10 +23,6 @@ import {
     serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// ============================================
-// ИНИЦИАЛИЗАЦИЯ
-// ============================================
-
 const auth = getAuth();
 const db = getFirestore();
 
@@ -43,19 +33,17 @@ let isAdmin = false;
 // ============================================
 // PRELOADER
 // ============================================
-
 window.addEventListener('load', () => {
     setTimeout(() => {
         document.getElementById('preloader').classList.add('hidden');
-    }, 1000);
+    }, 800);
 });
 
 // ============================================
-// HEADER SCROLL EFFECT
+// HEADER SCROLL
 // ============================================
-
 window.addEventListener('scroll', () => {
-    const header = document.querySelector('.header');
+    const header = document.getElementById('mainHeader');
     if (window.scrollY > 50) {
         header.classList.add('scrolled');
     } else {
@@ -64,10 +52,8 @@ window.addEventListener('scroll', () => {
 });
 
 // ============================================
-// АУТЕНТИФИКАЦИЯ
+// AUTH STATE
 // ============================================
-
-// Слушатель состояния авторизации
 onAuthStateChanged(auth, (user) => {
     if (user) {
         currentUser = user;
@@ -75,7 +61,6 @@ onAuthStateChanged(auth, (user) => {
         updateUI();
         loadStats();
         renderCategories();
-        showToast('Добро пожаловать!', 'success');
     } else {
         currentUser = null;
         isAdmin = false;
@@ -84,47 +69,42 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// Проверка статуса администратора
 async function checkAdminStatus(uid) {
     try {
         const adminDoc = await getDoc(doc(db, 'admins', uid));
         isAdmin = adminDoc.exists();
-        if (isAdmin) {
-            localStorage.setItem('isAdmin', 'true');
-        } else {
-            localStorage.removeItem('isAdmin');
-        }
         updateUI();
     } catch (error) {
-        console.error('Ошибка проверки админа:', error);
+        console.error('Admin check error:', error);
     }
 }
 
-// Регистрация
-async function register() {
+// ============================================
+// AUTH FUNCTIONS
+// ============================================
+window.registerUser = async function() {
     const username = document.getElementById('regUsername').value.trim();
     const email = document.getElementById('regEmail').value.trim();
     const password = document.getElementById('regPassword').value;
-    const confirmPassword = document.getElementById('regPasswordConfirm').value;
+    const confirm = document.getElementById('regPasswordConfirm').value;
 
-    // Валидация
-    if (!username || !email || !password || !confirmPassword) {
-        showToast('Заполните все поля', 'error');
+    if (!username || !email || !password || !confirm) {
+        showToast('Please fill all fields', 'error');
         return;
     }
 
     if (username.length < 3) {
-        showToast('Имя пользователя должно быть минимум 3 символа', 'error');
+        showToast('Username must be at least 3 characters', 'error');
         return;
     }
 
     if (password.length < 6) {
-        showToast('Пароль должен быть минимум 6 символов', 'error');
+        showToast('Password must be at least 6 characters', 'error');
         return;
     }
 
-    if (password !== confirmPassword) {
-        showToast('Пароли не совпадают', 'error');
+    if (password !== confirm) {
+        showToast('Passwords do not match', 'error');
         return;
     }
 
@@ -132,7 +112,6 @@ async function register() {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // Сохраняем данные пользователя
         await setDoc(doc(db, 'users', user.uid), {
             username: username,
             email: email,
@@ -141,139 +120,114 @@ async function register() {
         });
 
         closeModal('registerModal');
-        showToast('Регистрация успешна! Добро пожаловать!', 'success');
+        showToast('Account created successfully!', 'success');
         
-        // Очищаем форму
         document.getElementById('regUsername').value = '';
         document.getElementById('regEmail').value = '';
         document.getElementById('regPassword').value = '';
         document.getElementById('regPasswordConfirm').value = '';
         
     } catch (error) {
-        console.error('Ошибка регистрации:', error);
+        console.error('Registration error:', error);
         if (error.code === 'auth/email-already-in-use') {
-            showToast('Этот email уже используется', 'error');
+            showToast('Email already in use', 'error');
         } else if (error.code === 'auth/weak-password') {
-            showToast('Пароль слишком слабый', 'error');
+            showToast('Password is too weak', 'error');
         } else {
-            showToast('Ошибка регистрации: ' + error.message, 'error');
+            showToast('Registration failed: ' + error.message, 'error');
         }
     }
-}
+};
 
-// Вход
-async function login() {
+window.loginUser = async function() {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
 
     if (!email || !password) {
-        showToast('Заполните все поля', 'error');
+        showToast('Please fill all fields', 'error');
         return;
     }
 
     try {
         await signInWithEmailAndPassword(auth, email, password);
         closeModal('loginModal');
-        
-        // Очищаем форму
         document.getElementById('loginEmail').value = '';
         document.getElementById('loginPassword').value = '';
-        
-        showToast('Добро пожаловать!', 'success');
+        showToast('Welcome back!', 'success');
     } catch (error) {
-        console.error('Ошибка входа:', error);
+        console.error('Login error:', error);
         if (error.code === 'auth/user-not-found') {
-            showToast('Пользователь не найден', 'error');
+            showToast('User not found', 'error');
         } else if (error.code === 'auth/wrong-password') {
-            showToast('Неверный пароль', 'error');
+            showToast('Invalid password', 'error');
         } else if (error.code === 'auth/invalid-email') {
-            showToast('Неверный формат email', 'error');
+            showToast('Invalid email format', 'error');
         } else {
-            showToast('Ошибка входа: ' + error.message, 'error');
+            showToast('Login failed: ' + error.message, 'error');
         }
     }
-}
+};
 
-// Выход
-async function logout() {
+window.logoutUser = async function() {
     try {
         await signOut(auth);
-        localStorage.removeItem('isAdmin');
-        showToast('Вы вышли из аккаунта', 'warning');
+        showToast('Logged out successfully', 'warning');
     } catch (error) {
-        console.error('Ошибка выхода:', error);
+        console.error('Logout error:', error);
     }
-}
+};
 
 // ============================================
-// АДМИН-ПАНЕЛЬ
+// ADMIN FUNCTIONS
 // ============================================
-
-function showAdminPanel() {
-    if (!currentUser) {
-        showToast('Сначала войдите в аккаунт', 'error');
-        return;
-    }
-    document.getElementById('adminModal').classList.add('active');
-    document.getElementById('adminPassword').value = '';
-    document.getElementById('adminActions').style.display = isAdmin ? 'block' : 'none';
-    if (isAdmin) {
-        updateAdminCategorySelect();
-    }
-}
-
-function closeAdminPanel() {
-    document.getElementById('adminModal').classList.remove('active');
-}
-
-function verifyAdmin() {
+window.verifyAdminAccess = async function() {
     const password = document.getElementById('adminPassword').value.trim();
     const btn = document.querySelector('#adminModal .admin-verify .btn-admin');
-    const originalText = btn.innerHTML;
-    
+    const label = document.getElementById('adminVerifyLabel');
+    const originalText = label.textContent;
+
     if (password === '1267') {
         if (currentUser) {
-            btn.innerHTML = '⏳ Проверка...';
+            label.textContent = 'Verifying...';
             btn.disabled = true;
-            
-            setDoc(doc(db, 'admins', currentUser.uid), {
-                uid: currentUser.uid,
-                grantedAt: serverTimestamp()
-            }).then(() => {
+
+            try {
+                await setDoc(doc(db, 'admins', currentUser.uid), {
+                    uid: currentUser.uid,
+                    grantedAt: serverTimestamp()
+                });
                 isAdmin = true;
-                localStorage.setItem('isAdmin', 'true');
                 document.getElementById('adminActions').style.display = 'block';
                 document.getElementById('adminPassword').value = '';
                 updateUI();
                 updateAdminCategorySelect();
-                showToast('Вы получили права администратора!', 'success');
-                btn.innerHTML = '✅ Права получены';
+                showToast('Admin privileges granted!', 'success');
+                label.textContent = '✓ Granted';
                 setTimeout(() => {
-                    btn.innerHTML = originalText;
+                    label.textContent = originalText;
                     btn.disabled = false;
-                }, 3000);
-            }).catch(error => {
-                showToast('Ошибка: ' + error.message, 'error');
-                btn.innerHTML = originalText;
+                }, 2000);
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+                label.textContent = originalText;
                 btn.disabled = false;
-            });
+            }
         }
     } else {
-        showToast('Неверный пароль', 'error');
-        btn.innerHTML = '❌ Неверный пароль';
+        showToast('Invalid admin code', 'error');
+        label.textContent = '✗ Invalid';
         setTimeout(() => {
-            btn.innerHTML = originalText;
+            label.textContent = originalText;
         }, 2000);
     }
-}
+};
 
 // ============================================
-// РАБОТА С КАТЕГОРИЯМИ
+// CATEGORY FUNCTIONS
 // ============================================
-
-async function addCategory() {
+window.addCategory = async function() {
     if (!isAdmin) {
-        showToast('Только администраторы могут создавать разделы', 'error');
+        showToast('Admin privileges required', 'error');
         return;
     }
 
@@ -281,35 +235,34 @@ async function addCategory() {
     const description = document.getElementById('newCategoryDesc').value.trim();
 
     if (!name) {
-        showToast('Введите название раздела', 'error');
+        showToast('Please enter category name', 'error');
         return;
     }
 
     try {
         await addDoc(collection(db, 'categories'), {
             name: name,
-            description: description || 'Описание отсутствует',
+            description: description || 'No description',
             createdAt: serverTimestamp(),
             createdBy: currentUser.uid
         });
 
         document.getElementById('newCategoryName').value = '';
         document.getElementById('newCategoryDesc').value = '';
-        showToast('Раздел создан успешно!', 'success');
+        showToast('Category created successfully!', 'success');
         renderCategories();
         updateAdminCategorySelect();
     } catch (error) {
-        showToast('Ошибка: ' + error.message, 'error');
+        showToast('Error: ' + error.message, 'error');
     }
-}
+};
 
 // ============================================
-// РАБОТА С ТЕМАМИ
+// THREAD FUNCTIONS
 // ============================================
-
-async function addThread() {
+window.addThread = async function() {
     if (!currentUser) {
-        showToast('Войдите в аккаунт', 'error');
+        showToast('Please sign in first', 'error');
         return;
     }
 
@@ -318,7 +271,7 @@ async function addThread() {
     const content = document.getElementById('newThreadContent').value.trim();
 
     if (!title || !content) {
-        showToast('Заполните все поля', 'error');
+        showToast('Please fill all fields', 'error');
         return;
     }
 
@@ -339,44 +292,41 @@ async function addThread() {
 
         document.getElementById('newThreadTitle').value = '';
         document.getElementById('newThreadContent').value = '';
-        showToast('Тема создана успешно!', 'success');
+        showToast('Topic created successfully!', 'success');
         renderCategories();
     } catch (error) {
-        showToast('Ошибка: ' + error.message, 'error');
+        showToast('Error: ' + error.message, 'error');
     }
-}
+};
 
-async function deleteThread(threadId) {
+window.deleteThread = async function(threadId) {
     if (!isAdmin) {
-        showToast('Только администраторы могут удалять темы', 'error');
+        showToast('Admin privileges required', 'error');
         return;
     }
 
-    if (!confirm('🗑️ Удалить эту тему и все ответы?')) return;
+    if (!confirm('Delete this topic and all replies?')) return;
 
     try {
         await deleteDoc(doc(db, 'threads', threadId));
-
         const postsQuery = query(collection(db, 'posts'), where('threadId', '==', threadId));
         const postsSnapshot = await getDocs(postsQuery);
         const deletePromises = postsSnapshot.docs.map(d => deleteDoc(doc(db, 'posts', d.id)));
         await Promise.all(deletePromises);
-
-        showToast('Тема удалена', 'warning');
+        showToast('Topic deleted', 'warning');
         renderCategories();
     } catch (error) {
-        showToast('Ошибка: ' + error.message, 'error');
+        showToast('Error: ' + error.message, 'error');
     }
-}
+};
 
 // ============================================
-// ОТОБРАЖЕНИЕ
+// RENDER FUNCTIONS
 // ============================================
-
 function updateUI() {
     const userInfo = document.getElementById('userInfo');
-    const currentUserSpan = document.getElementById('currentUser');
-    const avatarLetter = document.getElementById('avatarLetter');
+    const userName = document.getElementById('currentUser');
+    const avatar = document.getElementById('userAvatar');
     const adminBadge = document.getElementById('adminBadge');
     const loginBtn = document.getElementById('loginBtn');
     const registerBtn = document.getElementById('registerBtn');
@@ -384,18 +334,13 @@ function updateUI() {
     const adminPanelBtn = document.getElementById('adminPanelBtn');
 
     if (currentUser) {
-        // Получаем username из базы
         getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                currentUserSpan.textContent = data.username || currentUser.email;
-                avatarLetter.textContent = (data.username || currentUser.email)[0].toUpperCase();
-            } else {
-                currentUserSpan.textContent = currentUser.email;
-                avatarLetter.textContent = currentUser.email[0].toUpperCase();
+                userName.textContent = data.username || currentUser.email;
+                avatar.textContent = (data.username || currentUser.email)[0].toUpperCase();
             }
         });
-        
         userInfo.style.display = 'flex';
         adminBadge.style.display = isAdmin ? 'inline' : 'none';
         loginBtn.style.display = 'none';
@@ -413,8 +358,8 @@ function updateUI() {
 
 async function renderCategories() {
     const container = document.getElementById('categoriesContainer');
-    const countElement = document.getElementById('categoriesCount');
-    container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Загрузка разделов...</p></div>';
+    const counter = document.getElementById('categoriesCount');
+    container.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Loading categories...</p></div>';
 
     try {
         const categoriesSnapshot = await getDocs(collection(db, 'categories'));
@@ -423,15 +368,15 @@ async function renderCategories() {
             categories.push({ id: doc.id, ...doc.data() });
         });
 
-        countElement.textContent = `${categories.length} разделов`;
+        counter.textContent = `${categories.length} categories`;
 
         if (categories.length === 0) {
             container.innerHTML = `
-                <div class="forum-section">
-                    <div class="empty-message">
-                        <span class="empty-icon">📭</span>
-                        <p>Нет созданных разделов</p>
-                        ${isAdmin ? '<p style="color: var(--primary-light);">Используйте админ-панель для создания разделов</p>' : ''}
+                <div class="forum-category">
+                    <div class="empty-state">
+                        <span class="empty-icon">📋</span>
+                        <p>No categories created yet</p>
+                        ${isAdmin ? '<p style="color: var(--primary-light); font-size: 13px;">Use admin panel to create categories</p>' : ''}
                     </div>
                 </div>
             `;
@@ -449,31 +394,29 @@ async function renderCategories() {
             const categoryThreads = threads.filter(t => t.categoryId === category.id);
             
             html += `
-                <div class="forum-section">
-                    <div class="forum-section-header">
-                        <div>
-                            <h2>${category.name}</h2>
-                            <span class="subtitle">${category.description || 'Описание отсутствует'}</span>
-                        </div>
-                        <span class="topic-count">${categoryThreads.length} тем</span>
+                <div class="forum-category">
+                    <div class="category-header">
+                        <h4>${category.name}</h4>
+                        <span class="category-meta">${categoryThreads.length} topics</span>
                     </div>
+                    <div class="category-desc">${category.description || 'No description'}</div>
                     ${categoryThreads.length === 0 ? 
-                        `<div class="empty-message" style="padding:15px;font-size:14px;">В этом разделе пока нет тем</div>` :
+                        `<div class="empty-state" style="padding:16px 0;font-size:14px;">No topics in this category</div>` :
                         `<ul class="topic-list">
                             ${categoryThreads.map(thread => `
                                 <li class="topic-item" onclick="openThread('${thread.id}')">
                                     <div class="topic-info">
-                                        <h3>${thread.title}</h3>
+                                        <h5>${thread.title}</h5>
                                         <div class="topic-meta">
-                                            <span>👤 ${thread.author}</span>
-                                            <span>📅 ${formatDate(thread.createdAt)}</span>
-                                            <span>👁 ${thread.views || 0}</span>
-                                            <span>💬 ${thread.replies || 0}</span>
+                                            <span>By ${thread.author}</span>
+                                            <span>${formatDate(thread.createdAt)}</span>
+                                            <span>Views ${thread.views || 0}</span>
+                                            <span>Replies ${thread.replies || 0}</span>
                                         </div>
                                     </div>
                                     <div class="topic-actions">
                                         ${isAdmin ? `
-                                            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteThread('${thread.id}')">🗑</button>
+                                            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteThread('${thread.id}')">Delete</button>
                                         ` : ''}
                                     </div>
                                 </li>
@@ -486,14 +429,14 @@ async function renderCategories() {
 
         container.innerHTML = html;
         loadStats();
-        updateBannerStats();
+        updateHeroStats();
     } catch (error) {
-        console.error('Ошибка загрузки:', error);
-        container.innerHTML = `<div class="empty-message"><span class="empty-icon">⚠️</span><p>Ошибка загрузки данных</p></div>`;
+        console.error('Render error:', error);
+        container.innerHTML = `<div class="empty-state"><span class="empty-icon">⚠️</span><p>Error loading data</p></div>`;
     }
 }
 
-async function openThread(threadId) {
+window.openThread = async function(threadId) {
     currentThreadId = threadId;
     const container = document.getElementById('threadContainer');
     const threadView = document.getElementById('threadView');
@@ -501,13 +444,13 @@ async function openThread(threadId) {
 
     categoriesView.style.display = 'none';
     threadView.style.display = 'block';
-    container.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>Загрузка темы...</p></div>';
+    container.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Loading topic...</p></div>';
 
     try {
         const threadDoc = await getDoc(doc(db, 'threads', threadId));
         if (!threadDoc.exists()) {
-            showToast('Тема не найдена', 'error');
-            showCategories();
+            showToast('Topic not found', 'error');
+            showCategoriesView();
             return;
         }
         const thread = { id: threadDoc.id, ...threadDoc.data() };
@@ -527,36 +470,30 @@ async function openThread(threadId) {
             posts.push({ id: doc.id, ...doc.data() });
         });
 
-        const userDoc = await getDoc(doc(db, 'users', thread.authorId));
-        const authorName = userDoc.exists() ? userDoc.data().username : thread.author;
-
         container.innerHTML = `
-            <div class="thread-header">
+            <div class="thread-detail">
                 <h2>${thread.title}</h2>
                 <div class="thread-meta">
-                    <span>👤 ${authorName}</span>
-                    <span>📅 ${formatDate(thread.createdAt)}</span>
-                    <span>👁 ${(thread.views || 0) + 1}</span>
-                    <span>💬 ${posts.length}</span>
+                    <span>Author: ${thread.author}</span>
+                    <span>${formatDate(thread.createdAt)}</span>
+                    <span>Views: ${(thread.views || 0) + 1}</span>
+                    <span>Replies: ${posts.length}</span>
                 </div>
-                <div class="thread-content">${thread.content}</div>
+                <div class="thread-body">${thread.content}</div>
             </div>
             
             <div class="posts-header">
-                <h3>💬 Ответы</h3>
-                <span class="posts-count">${posts.length} сообщений</span>
+                <h3>Replies</h3>
+                <span class="posts-count">${posts.length} posts</span>
             </div>
             
             <div id="postsContainer">
                 ${posts.length === 0 ? 
-                    '<div class="empty-message"><span class="empty-icon">💭</span><p>Пока нет ответов. Будьте первым!</p></div>' :
+                    '<div class="empty-state"><span class="empty-icon">💬</span><p>No replies yet</p></div>' :
                     posts.map(post => `
                         <div class="post-item">
-                            <div class="post-header">
-                                <span class="post-author">
-                                    <span class="post-avatar">${post.author[0].toUpperCase()}</span>
-                                    ${post.author}
-                                </span>
+                            <div class="post-head">
+                                <span class="post-author">${post.author}</span>
                                 <span class="post-date">${formatDate(post.createdAt)}</span>
                             </div>
                             <div class="post-content">${post.content}</div>
@@ -567,34 +504,34 @@ async function openThread(threadId) {
             
             ${currentUser ? `
                 <div class="reply-section">
-                    <h4>✏️ Написать ответ</h4>
-                    <textarea id="newPostContent" placeholder="Введите текст ответа..."></textarea>
+                    <h4>Write a reply</h4>
+                    <textarea id="newPostContent" placeholder="Enter your reply..."></textarea>
                     <button class="btn btn-primary" onclick="addPost('${threadId}')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>
-                        Отправить
+                        Send Reply
                     </button>
                 </div>
             ` : `
-                <div style="margin-top:20px;padding:20px;background:var(--dark-card);border-radius:var(--radius-sm);text-align:center;border:1px solid var(--border);">
-                    <p style="color:var(--text-muted);">🔑 Войдите в аккаунт, чтобы оставить ответ</p>
+                <div style="margin-top:20px;padding:20px;background:var(--dark-card);border-radius:var(--radius);text-align:center;border:1px solid var(--border);">
+                    <p style="color:var(--text-muted);">Sign in to reply to this topic</p>
                 </div>
             `}
         `;
     } catch (error) {
-        console.error('Ошибка загрузки темы:', error);
-        container.innerHTML = `<div class="empty-message"><span class="empty-icon">⚠️</span><p>Ошибка загрузки темы</p></div>`;
+        console.error('Open thread error:', error);
+        container.innerHTML = `<div class="empty-state"><span class="empty-icon">⚠️</span><p>Error loading topic</p></div>`;
     }
-}
+};
 
-async function addPost(threadId) {
+window.addPost = async function(threadId) {
     const content = document.getElementById('newPostContent').value.trim();
     if (!content) {
-        showToast('Введите текст ответа', 'error');
+        showToast('Please enter your reply', 'error');
         return;
     }
 
     if (!currentUser) {
-        showToast('Войдите в аккаунт', 'error');
+        showToast('Please sign in first', 'error');
         return;
     }
 
@@ -619,58 +556,51 @@ async function addPost(threadId) {
         }
 
         document.getElementById('newPostContent').value = '';
-        showToast('Ответ отправлен!', 'success');
+        showToast('Reply sent!', 'success');
         openThread(threadId);
     } catch (error) {
-        showToast('Ошибка: ' + error.message, 'error');
+        showToast('Error: ' + error.message, 'error');
     }
-}
+};
 
-function showCategories() {
+window.showCategoriesView = function() {
     document.getElementById('threadView').style.display = 'none';
     document.getElementById('categoriesView').style.display = 'block';
     renderCategories();
-}
+};
 
 // ============================================
-// СТАТИСТИКА
+// STATS
 // ============================================
-
 async function loadStats() {
     try {
         const usersSnapshot = await getDocs(collection(db, 'users'));
         const threadsSnapshot = await getDocs(collection(db, 'threads'));
         const postsSnapshot = await getDocs(collection(db, 'posts'));
-
-        document.getElementById('totalUsers').textContent = usersSnapshot.size;
-        document.getElementById('totalThreads').textContent = threadsSnapshot.size;
-        document.getElementById('totalPosts').textContent = postsSnapshot.size;
-        
-        // Онлайн (приблизительно)
-        document.getElementById('onlineUsers').textContent = Math.floor(Math.random() * 25) + 5;
+        document.getElementById('heroUsers').textContent = usersSnapshot.size;
+        document.getElementById('heroThreads').textContent = threadsSnapshot.size;
+        document.getElementById('heroPosts').textContent = postsSnapshot.size;
     } catch (error) {
-        console.error('Ошибка загрузки статистики:', error);
+        console.error('Stats error:', error);
     }
 }
 
-async function updateBannerStats() {
+async function updateHeroStats() {
     try {
         const usersSnapshot = await getDocs(collection(db, 'users'));
         const threadsSnapshot = await getDocs(collection(db, 'threads'));
         const postsSnapshot = await getDocs(collection(db, 'posts'));
-
-        document.getElementById('bannerUsers').textContent = usersSnapshot.size;
-        document.getElementById('bannerThreads').textContent = threadsSnapshot.size;
-        document.getElementById('bannerPosts').textContent = postsSnapshot.size;
+        document.getElementById('heroUsers').textContent = usersSnapshot.size;
+        document.getElementById('heroThreads').textContent = threadsSnapshot.size;
+        document.getElementById('heroPosts').textContent = postsSnapshot.size;
     } catch (error) {
-        console.error('Ошибка загрузки статистики:', error);
+        console.error('Hero stats error:', error);
     }
 }
 
 function updateAdminCategorySelect() {
     const select = document.getElementById('adminCategorySelect');
     select.innerHTML = '';
-    
     getDocs(collection(db, 'categories')).then(snapshot => {
         snapshot.forEach(doc => {
             const data = doc.data();
@@ -680,115 +610,80 @@ function updateAdminCategorySelect() {
             select.appendChild(option);
         });
     }).catch(error => {
-        console.error('Ошибка загрузки категорий:', error);
+        console.error('Category select error:', error);
     });
 }
 
 // ============================================
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// HELPERS
 // ============================================
-
 function formatDate(dateStr) {
-    if (!dateStr) return 'Неизвестно';
+    if (!dateStr) return 'Unknown';
     try {
         const date = dateStr.toDate ? dateStr.toDate() : new Date(dateStr);
-        if (isNaN(date.getTime())) return 'Неизвестно';
-        return date.toLocaleDateString('ru-RU') + ' ' + date.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+        if (isNaN(date.getTime())) return 'Unknown';
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + 
+               ' ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     } catch {
-        return 'Неизвестно';
+        return 'Unknown';
     }
 }
 
-function showToast(message, type = 'success') {
+window.showToast = function(message, type = 'success') {
     const toast = document.getElementById('toast');
-    const icon = document.getElementById('toastIcon');
+    const indicator = document.getElementById('toastIndicator');
     const title = document.getElementById('toastTitle');
     const msg = document.getElementById('toastMessage');
-    
-    const icons = {
-        success: '✅',
-        error: '❌',
-        warning: '⚠️'
+
+    const config = {
+        success: { title: 'Success', color: 'var(--success)' },
+        error: { title: 'Error', color: 'var(--danger)' },
+        warning: { title: 'Warning', color: 'var(--warning)' }
     };
-    
-    const titles = {
-        success: 'Успех',
-        error: 'Ошибка',
-        warning: 'Внимание'
-    };
-    
-    icon.textContent = icons[type] || '✅';
-    title.textContent = titles[type] || 'Успех';
+
+    const c = config[type] || config.success;
+    title.textContent = c.title;
     msg.textContent = message;
-    
+    indicator.style.background = c.color;
+
     toast.className = `toast show ${type}`;
     clearTimeout(toast._timeout);
     toast._timeout = setTimeout(() => {
         toast.classList.remove('show');
     }, 3500);
-}
+};
 
-function closeToast() {
+window.closeToast = function() {
     document.getElementById('toast').classList.remove('show');
-}
+};
 
-function togglePassword(inputId, btn) {
+window.togglePasswordVisibility = function(inputId, btn) {
     const input = document.getElementById(inputId);
     if (input.type === 'password') {
         input.type = 'text';
-        btn.textContent = '🙈';
+        btn.textContent = 'Hide';
     } else {
         input.type = 'password';
-        btn.textContent = '👁️';
+        btn.textContent = 'Show';
     }
-}
+};
 
-function showLoginModal() {
-    document.getElementById('loginModal').classList.add('active');
-}
+window.openModal = function(id) {
+    document.getElementById(id).classList.add('active');
+};
 
-function showRegisterModal() {
-    document.getElementById('registerModal').classList.add('active');
-}
-
-function switchToRegister() {
-    closeModal('loginModal');
-    showRegisterModal();
-}
-
-function switchToLogin() {
-    closeModal('registerModal');
-    showLoginModal();
-}
-
-function closeModal(id) {
+window.closeModal = function(id) {
     document.getElementById(id).classList.remove('active');
-}
+};
 
-// Закрытие модальных окон по клику вне
-document.querySelectorAll('.modal').forEach(modal => {
-    modal.addEventListener('click', function(e) {
-        if (e.target === this) {
-            this.classList.remove('active');
-        }
-    });
-});
-
-// Enter для форм
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        if (document.getElementById('loginModal').classList.contains('active')) {
-            login();
-        } else if (document.getElementById('registerModal').classList.contains('active')) {
-            register();
-        }
-    }
-});
+window.switchModal = function(closeId, openId) {
+    closeModal(closeId);
+    setTimeout(() => openModal(openId), 200);
+};
 
 // ============================================
-// РЕАЛЬНОЕ ВРЕМЯ (onSnapshot)
+// REAL-TIME UPDATES
 // ============================================
-
 onSnapshot(collection(db, 'categories'), () => {
     if (!document.getElementById('threadView').style.display || 
         document.getElementById('threadView').style.display === 'none') {
@@ -803,4 +698,4 @@ onSnapshot(collection(db, 'threads'), () => {
     }
 });
 
-console.log('🚀 Arizona RP Forum загружен!');
+console.log('Arizona RP Forum initialized');
