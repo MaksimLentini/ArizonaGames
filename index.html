@@ -50,6 +50,7 @@
                     <button class="btn btn-outline" id="registerBtn" onclick="openModal('registerModal')">Регистрация</button>
                     <button class="btn btn-danger" id="logoutBtn" style="display:none;" onclick="logoutUser()">Выйти</button>
                     <button class="btn btn-admin" id="adminPanelBtn" style="display:none;" onclick="openModal('adminModal')">Админ</button>
+                    <button class="btn btn-outline btn-sm" onclick="showUsersList()" style="display:none;" id="usersListBtn">👥 Пользователи</button>
                 </div>
             </div>
         </header>
@@ -115,7 +116,7 @@
                     </div>
                 </div>
 
-                <!-- СТРАНИЦЫ -->
+                <!-- СТРАНИЦЫ (Rules, Help, Contact, Privacy) -->
                 <div id="pageView" style="display:none;">
                     <button class="btn btn-outline back-btn" onclick="closePage()">← Назад</button>
                     <div id="pageContainer"></div>
@@ -125,6 +126,17 @@
                 <div id="profileView" style="display:none;">
                     <button class="btn btn-outline back-btn" onclick="closeProfile()">← Назад</button>
                     <div id="profileContainer"></div>
+                </div>
+
+                <!-- СПИСОК ПОЛЬЗОВАТЕЛЕЙ -->
+                <div id="usersView" style="display:none;">
+                    <button class="btn btn-outline back-btn" onclick="showCategoriesView()">← Назад</button>
+                    <div id="usersContainer">
+                        <div class="loading-state">
+                            <div class="loading-spinner"></div>
+                            <p>Загрузка пользователей...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
