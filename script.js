@@ -34,6 +34,7 @@ let currentUserData = null;
 let isAdmin = false;
 let userRank = 'player';
 let adminChecked = false;
+let foundUserForAdmin = null;
 
 // ============================================
 // РАНГИ
@@ -172,7 +173,6 @@ async function loadUserData(uid) {
         }
     } catch (error) {
         console.error('Load user data error:', error);
-        // Создаём минимальные данные, чтобы не было ошибок
         currentUserData = {
             username: currentUser.email.split('@')[0],
             email: currentUser.email,
@@ -195,7 +195,6 @@ async function checkAdminStatus(uid) {
         if (isAdmin && userRank !== 'owner' && userRank !== 'admin') {
             await updateDoc(doc(db, 'users', uid), { rank: 'admin' });
             userRank = 'admin';
-            // Автоматически показываем админ-панель
             document.getElementById('adminActions').style.display = 'block';
         }
         updateUI();
@@ -246,7 +245,7 @@ window.toggleFollow = async function(targetUid) {
 };
 
 // ============================================
-// ПРОФИЛЬ С ГОСТЕВОЙ КНИГОЙ
+// ПРОФИЛЬ
 // ============================================
 window.openProfile = async function(e, userId = null) {
     if (e) e.stopPropagation();
@@ -287,7 +286,6 @@ window.openProfile = async function(e, userId = null) {
         const following = data.following || [];
         const isFollowing = followers.includes(currentUser.uid);
 
-        // Получаем записи в гостевой книге
         const postsQuery = query(
             collection(db, 'profile_posts'),
             where('toUid', '==', targetUid),
@@ -551,6 +549,98 @@ window.setUserRank = async function() {
 };
 
 // ============================================
+// ВЫДАЧА ПРАВ ПО НИКУ
+// ============================================
+window.searchUserForAdmin = async function() {
+    const username = document.getElementById('adminUserSearch').value.trim();
+    if (!username) {
+        showToast('Введите ник пользователя', 'error');
+        return;
+    }
+
+    try {
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        let found = null;
+        usersSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.username && data.username.toLowerCase() === username.toLowerCase()) {
+                found = { id: doc.id, ...data };
+            }
+        });
+
+        const resultDiv = document.getElementById('userSearchResult');
+        const nameSpan = document.getElementById('userSearchName');
+
+        if (found) {
+            foundUserForAdmin = found;
+            const currentRank = found.rank || 'player';
+            nameSpan.innerHTML = `
+                <strong>${found.username}</strong> 
+                (текущий ранг: ${getRankName(currentRank)})
+                ${found.id === currentUser.uid ? ' <span style="color:var(--warning);">(это вы)</span>' : ''}
+            `;
+            resultDiv.style.display = 'block';
+            
+            const grantBtn = resultDiv.querySelector('.btn-success');
+            if (found.rank === 'admin' || found.rank === 'owner') {
+                grantBtn.style.display = 'none';
+                nameSpan.innerHTML += ' <span style="color:var(--success);">✅ Уже администратор</span>';
+            } else {
+                grantBtn.style.display = 'inline-block';
+            }
+        } else {
+            foundUserForAdmin = null;
+            nameSpan.textContent = `❌ Пользователь "${username}" не найден`;
+            resultDiv.style.display = 'block';
+            const grantBtn = resultDiv.querySelector('.btn-success');
+            if (grantBtn) grantBtn.style.display = 'none';
+        }
+    } catch (error) {
+        showToast('Ошибка поиска: ' + error.message, 'error');
+    }
+};
+
+window.grantAdmin = async function() {
+    if (!foundUserForAdmin) {
+        showToast('Сначала найдите пользователя', 'error');
+        return;
+    }
+
+    if (foundUserForAdmin.id === currentUser.uid) {
+        showToast('Нельзя выдать права самому себе', 'error');
+        return;
+    }
+
+    if (!isAdmin) {
+        showToast('У вас нет прав для выдачи администратора', 'error');
+        return;
+    }
+
+    try {
+        await setDoc(doc(db, 'admins', foundUserForAdmin.id), {
+            uid: foundUserForAdmin.id,
+            grantedAt: serverTimestamp(),
+            grantedBy: currentUser.uid
+        });
+
+        await updateDoc(doc(db, 'users', foundUserForAdmin.id), {
+            rank: 'admin'
+        });
+
+        showToast(`✅ Пользователь ${foundUserForAdmin.username} теперь администратор!`, 'success');
+        
+        document.getElementById('userSearchResult').style.display = 'none';
+        document.getElementById('adminUserSearch').value = '';
+        foundUserForAdmin = null;
+
+        updateUI();
+        renderCategories();
+    } catch (error) {
+        showToast('Ошибка: ' + error.message, 'error');
+    }
+};
+
+// ============================================
 // AUTH
 // ============================================
 window.registerUser = async function() {
@@ -655,12 +745,11 @@ window.logoutUser = async function() {
 };
 
 // ============================================
-// ADMIN - БЕЗ ПОДСКАЗОК И БЕЗ ДУБЛИРОВАНИЯ
+// ADMIN
 // ============================================
 window.verifyAdmin = async function() {
     const password = document.getElementById('adminPassword').value.trim();
 
-    // Если уже админ - просто показываем панель
     if (isAdmin) {
         document.getElementById('adminActions').style.display = 'block';
         document.getElementById('adminPassword').value = '';
@@ -698,9 +787,8 @@ window.verifyAdmin = async function() {
     }
 };
 
-// Автоматически показываем админ-панель при открытии модалки, если уже админ
+// Автоматическое открытие панели
 document.addEventListener('DOMContentLoaded', () => {
-    // Отслеживаем открытие админ-модалки
     const adminModal = document.getElementById('adminModal');
     const observer = new MutationObserver(() => {
         if (adminModal.classList.contains('active') && isAdmin) {
@@ -1317,9 +1405,7 @@ window.showPage = function(page) {
             title: '📞 Контакты',
             subtitle: 'Свяжитесь с администрацией',
             contacts: [
-                { icon: '📧', label: 'Email', value: 'support@arizona-rp.com' },
-                { icon: '💬', label: 'Discord', value: 'discord.gg/arizona-rp' },
-                { icon: '📱', label: 'Telegram', value: '@arizona_rp_support' }
+                { icon: '💬', label: 'Discord', value: 'lentini321321' }
             ]
         },
         privacy: {

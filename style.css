@@ -43,6 +43,57 @@ body {
 }
 
 /* ============================================
+   SALE BANNER
+   ============================================ */
+.sale-banner {
+    position: fixed;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%) rotate(-90deg);
+    transform-origin: left center;
+    background: linear-gradient(135deg, #e94560, #ff6b6b);
+    color: white;
+    padding: 12px 28px;
+    border-radius: 0 12px 12px 0;
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 2px;
+    z-index: 999;
+    box-shadow: 0 4px 30px rgba(233, 69, 96, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: salePulse 2s ease-in-out infinite;
+    cursor: pointer;
+    user-select: none;
+    border: 2px solid rgba(255,255,255,0.2);
+}
+
+.sale-banner .sale-text {
+    text-transform: uppercase;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.sale-banner .sale-discord {
+    font-weight: 600;
+    font-size: 13px;
+    opacity: 0.9;
+    background: rgba(255,255,255,0.15);
+    padding: 4px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+@keyframes salePulse {
+    0%, 100% { box-shadow: 0 4px 30px rgba(233, 69, 96, 0.4); }
+    50% { box-shadow: 0 4px 50px rgba(233, 69, 96, 0.8); }
+}
+
+.sale-banner:hover {
+    transform: translateY(-50%) rotate(-90deg) scale(1.05);
+}
+
+/* ============================================
    SCROLLBAR
    ============================================ */
 ::-webkit-scrollbar {
@@ -547,6 +598,11 @@ body {
     border-left-color: var(--primary);
 }
 
+.topic-item.topic-closed {
+    opacity: 0.7;
+    border-left-color: var(--danger);
+}
+
 .topic-info {
     flex: 1;
     min-width: 0;
@@ -599,6 +655,11 @@ body {
     margin-bottom: 24px;
 }
 
+.thread-detail.thread-closed {
+    border-color: var(--danger);
+    opacity: 0.8;
+}
+
 .thread-detail h2 {
     font-size: 26px;
     font-weight: 800;
@@ -629,6 +690,13 @@ body {
     color: var(--text-light);
     white-space: pre-wrap;
     word-break: break-word;
+}
+
+.thread-admin-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
 }
 
 /* ============================================
@@ -673,9 +741,29 @@ body {
     gap: 8px;
 }
 
+.post-author-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .post-author {
     font-weight: 600;
     color: var(--primary-light);
+}
+
+.post-rank {
+    font-size: 11px;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.04);
+    padding: 0 10px;
+    border-radius: 10px;
+}
+
+.post-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .post-date {
@@ -975,17 +1063,9 @@ body {
     flex-shrink: 0;
 }
 
-.toast.success .toast-indicator {
-    background: var(--success);
-}
-
-.toast.error .toast-indicator {
-    background: var(--danger);
-}
-
-.toast.warning .toast-indicator {
-    background: var(--warning);
-}
+.toast.success .toast-indicator { background: var(--success); }
+.toast.error .toast-indicator { background: var(--danger); }
+.toast.warning .toast-indicator { background: var(--warning); }
 
 .toast-body {
     flex: 1;
@@ -1173,6 +1253,29 @@ body {
     background: var(--dark);
 }
 
+.profile-rank-badge {
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+}
+
+.rank-admin {
+    background: linear-gradient(135deg, var(--warning), var(--danger));
+}
+
+.rank-player {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+}
+
+.profile-follow-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
 .profile-info {
     flex: 1;
     min-width: 200px;
@@ -1182,6 +1285,12 @@ body {
     font-size: 32px;
     font-weight: 800;
     color: var(--primary-light);
+    margin-bottom: 4px;
+}
+
+.profile-rank {
+    font-size: 16px;
+    color: var(--text-muted);
     margin-bottom: 8px;
 }
 
@@ -1235,6 +1344,117 @@ body {
 .profile-edit-btn {
     font-size: 12px;
     padding: 4px 14px;
+}
+
+/* ============================================
+   PROFILE POSTS (ГОСТЕВАЯ КНИГА)
+   ============================================ */
+.profile-posts {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.profile-posts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.profile-posts-header h4 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-light);
+}
+
+.profile-post-input {
+    display: flex;
+    gap: 8px;
+}
+
+.profile-post-input input {
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    min-width: 200px;
+}
+
+.profile-post-input input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.profile-post-item {
+    background: rgba(255,255,255,0.02);
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    border-left: 2px solid var(--primary-light);
+}
+
+.profile-post-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.profile-post-author {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.profile-post-author-name {
+    font-weight: 600;
+    color: var(--primary-light);
+    font-size: 14px;
+}
+
+.profile-post-rank {
+    font-size: 11px;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.04);
+    padding: 0 8px;
+    border-radius: 10px;
+}
+
+.profile-post-date {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.profile-post-content {
+    color: var(--text-light);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* ============================================
+   USER SEARCH RESULT
+   ============================================ */
+#userSearchResult {
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.03);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+#userSearchResult .btn {
+    flex-shrink: 0;
 }
 
 /* ============================================
@@ -1293,6 +1513,15 @@ body {
    RESPONSIVE
    ============================================ */
 @media (max-width: 768px) {
+    .sale-banner {
+        font-size: 12px;
+        padding: 8px 16px;
+    }
+    .sale-banner .sale-discord {
+        font-size: 10px;
+        padding: 2px 10px;
+    }
+
     .header-content {
         flex-direction: column;
         align-items: stretch;
@@ -1404,9 +1633,30 @@ body {
     .profile-name {
         font-size: 24px;
     }
+
+    .profile-posts-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .profile-post-input {
+        flex-direction: column;
+    }
+
+    .profile-post-input input {
+        min-width: unset;
+    }
 }
 
 @media (max-width: 480px) {
+    .sale-banner {
+        font-size: 10px;
+        padding: 6px 12px;
+    }
+    .sale-banner .sale-discord {
+        display: none;
+    }
+
     .container {
         padding: 0 12px;
     }
@@ -1478,5 +1728,14 @@ body {
 
     .modal-head h2 {
         font-size: 20px;
+    }
+
+    .thread-admin-actions {
+        flex-direction: column;
+    }
+
+    #userSearchResult {
+        flex-direction: column;
+        text-align: center;
     }
 }

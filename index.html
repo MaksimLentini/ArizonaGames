@@ -9,6 +9,12 @@
 </head>
 <body>
     <div id="app">
+        <!-- SALE BANNER -->
+        <div class="sale-banner">
+            <span class="sale-text">Сайт продается</span>
+            <span class="sale-discord">Discord: lentini321321</span>
+        </div>
+
         <!-- PRELOADER -->
         <div class="preloader" id="preloader">
             <div class="preloader-content">
@@ -222,7 +228,7 @@
         </div>
     </div>
 
-    <!-- ADMIN MODAL (БЕЗ ПОДСКАЗКИ ПРО ПАРОЛЬ) -->
+    <!-- ADMIN MODAL -->
     <div class="modal" id="adminModal">
         <div class="modal-overlay" onclick="closeModal('adminModal')"></div>
         <div class="modal-box modal-large">
@@ -230,7 +236,7 @@
             <div class="modal-head">
                 <div class="modal-icon">⚡</div>
                 <h2>Админ-панель</h2>
-                <p>Управление форумом в реальном времени</p>
+                <p>Управление форумом</p>
             </div>
 
             <div class="admin-verify">
@@ -241,12 +247,30 @@
                         <button type="button" class="field-toggle" onclick="togglePassword('adminPassword', this)">Показать</button>
                     </div>
                 </div>
-                <button class="btn btn-admin btn-block" onclick="verifyAdmin()">Получить права администратора</button>
+                <button class="btn btn-admin btn-block" onclick="verifyAdmin()">Получить права</button>
             </div>
 
             <div class="divider"></div>
 
             <div id="adminActions" style="display:none;">
+                <!-- ВЫДАЧА ПРАВ ПО НИКУ -->
+                <div class="admin-section">
+                    <h3>Выдать права администратора</h3>
+                    <div class="field-group">
+                        <label>Введите ник пользователя</label>
+                        <div style="display:flex;gap:8px;">
+                            <input type="text" id="adminUserSearch" placeholder="Ник пользователя" style="flex:1;" />
+                            <button class="btn btn-admin" onclick="searchUserForAdmin()">Найти</button>
+                        </div>
+                    </div>
+                    <div id="userSearchResult" style="display:none;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:12px;">
+                        <span id="userSearchName"></span>
+                        <button class="btn btn-success btn-sm" onclick="grantAdmin()" style="margin-left:12px;">Выдать права</button>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
                 <div class="admin-section">
                     <h3>Создать раздел</h3>
                     <div class="admin-grid">
@@ -309,27 +333,6 @@
                     <p style="font-size:12px;color:var(--text-muted);margin-top:4px;">Вставьте прямую ссылку на изображение</p>
                 </div>
                 <button type="submit" class="btn btn-primary btn-block">Сохранить изменения</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- MESSAGE MODAL (ОСТАВЛЯЮ ДЛЯ ЛИЧНЫХ СООБЩЕНИЙ, НО ОНИ НЕ ИСПОЛЬЗУЮТСЯ) -->
-    <div class="modal" id="messageModal">
-        <div class="modal-overlay" onclick="closeModal('messageModal')"></div>
-        <div class="modal-box">
-            <button class="modal-close" onclick="closeModal('messageModal')">×</button>
-            <div class="modal-head">
-                <div class="modal-icon">💬</div>
-                <h2>Личное сообщение</h2>
-                <p>Пользователю: <span id="msgToName" style="color:var(--primary-light);font-weight:700;"></span></p>
-            </div>
-            <form id="messageForm" onsubmit="event.preventDefault(); sendMessage();">
-                <input type="hidden" id="msgToUid" />
-                <div class="field-group">
-                    <label>Текст сообщения</label>
-                    <textarea id="msgContent" placeholder="Введите ваше сообщение..." rows="4" required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">📤 Отправить</button>
             </form>
         </div>
     </div>
