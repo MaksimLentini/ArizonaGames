@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Админ-панель - Информация о пользователях</title>
+    <link rel="stylesheet" href="style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <style>
+        .admin-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .admin-header {
+            background: var(--dark-card);
+            padding: 24px 32px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .admin-header h1 {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary-light);
+        }
+        .admin-header .admin-badge {
+            background: linear-gradient(135deg, var(--warning), var(--danger));
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--dark);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--dark-card);
+            padding: 20px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--primary-light);
+            display: block;
+        }
+        .stat-card .label {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .user-table-wrapper {
+            background: var(--dark-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            overflow-x: auto;
+        }
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .user-table th {
+            background: rgba(255,255,255,0.03);
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .user-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            color: var(--text-light);
+            vertical-align: middle;
+        }
+        .user-table tr:hover td {
+            background: rgba(255,255,255,0.02);
+        }
+        .user-table .avatar-mini {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: white;
+        }
+        .user-table .avatar-mini img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .rank-badge {
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .rank-owner { background: linear-gradient(135deg, #fdcb6e, #e17055); color: #0a0a1a; }
+        .rank-admin { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; }
+        .rank-moderator { background: linear-gradient(135deg, #00cec9, #00b894); color: #0a0a1a; }
+        .rank-leader { background: linear-gradient(135deg, #fdcb6e, #f39c12); color: #0a0a1a; }
+        .rank-player { background: linear-gradient(135deg, #636e72, #b2bec3); color: white; }
+        .rank-banned { background: linear-gradient(135deg, #e17055, #d63031); color: white; }
+
+        .action-btn {
+            padding: 4px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            margin: 2px;
+        }
+        .action-btn.view {
+            background: var(--primary);
+            color: white;
+        }
+        .action-btn.view:hover {
+            background: var(--primary-dark);
+        }
+        .action-btn.ban {
+            background: var(--danger);
+            color: white;
+        }
+        .action-btn.ban:hover {
+            background: #c0392b;
+        }
+        .search-box {
+            padding: 10px 16px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 14px;
+            min-width: 200px;
+            font-family: inherit;
+        }
+        .search-box:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .back-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+        .back-link:hover {
+            color: var(--primary-light);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+        .user-detail-modal .modal-box {
+            width: 500px;
+        }
+        .detail-field {
+            margin-bottom: 12px;
+        }
+        .detail-field label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: block;
+        }
+        .detail-field .value {
+            font-size: 15px;
+            color: var(--text);
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            word-break: break-all;
+        }
+        @media (max-width: 768px) {
+            .admin-header {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .user-table {
+                font-size: 12px;
+            }
+            .user-table th, .user-table td {
+                padding: 8px 10px;
+            }
+            .action-btn {
+                font-size: 10px;
+                padding: 2px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container" id="app">
+        <!-- ШАПКА -->
+        <div class="admin-header">
+            <div>
+                <h1>👑 Админ-панель</h1>
+                <span style="color:var(--text-muted);font-size:14px;">Управление пользователями</span>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                <span class="admin-badge">🔒 Только для администраторов</span>
+                <a href="/" class="back-link">← На главную</a>
+            </div>
+        </div>
+
+        <!-- СТАТИСТИКА -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <span class="number" id="totalUsers">0</span>
+                <span class="label">Всего пользователей</span>
+            </div>
+            <div class="stat-card">
+                <span class="number" id="totalAdmins">0</span>
+                <span class="label">Администраторов</span>
+            </div>
+            <div class="stat-card">
+                <span class="number" id="totalBanned">0</span>
+                <span class="label">Заблокированных</span>
+            </div>
+            <div class="stat-card">
+                <span class="number" id="totalPosts">0</span>
+                <span class="label">Всего сообщений</span>
+            </div>
+        </div>
+
+        <!-- ПОИСК -->
+        <div style="margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;">
+            <input type="text" id="searchInput" class="search-box" placeholder="🔍 Поиск по нику или email..." oninput="filterUsers()" />
+            <button class="btn btn-primary" onclick="exportData()">📥 Экспорт CSV</button>
+            <button class="btn btn-danger" onclick="confirmClearAll()">🗑️ Очистить всех</button>
+        </div>
+
+        <!-- ТАБЛИЦА -->
+        <div class="user-table-wrapper">
+            <table class="user-table" id="userTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Аватар</th>
+                        <th>Ник</th>
+                        <th>Email</th>
+                        <th>Ранг</th>
+                        <th>Тем</th>
+                        <th>Постов</th>
+                        <th>Подписчиков</th>
+                        <th>Дата регистрации</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    <tr><td colspan="10" class="empty-state">Загрузка...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА ДЕТАЛЕЙ ПОЛЬЗОВАТЕЛЯ -->
+    <div class="modal" id="userDetailModal">
+        <div class="modal-overlay" onclick="closeModal('userDetailModal')"></div>
+        <div class="modal-box user-detail-modal">
+            <button class="modal-close" onclick="closeModal('userDetailModal')">×</button>
+            <div class="modal-head">
+                <div class="modal-icon">👤</div>
+                <h2 id="detailUserName">Пользователь</h2>
+                <p id="detailUserRank">Ранг</p>
+            </div>
+            <div id="detailContent">
+                <div class="detail-field"><label>UID</label><div class="value" id="detailUid">-</div></div>
+                <div class="detail-field"><label>Email</label><div class="value" id="detailEmail">-</div></div>
+                <div class="detail-field"><label>О себе</label><div class="value" id="detailBio">-</div></div>
+                <div class="detail-field"><label>Аватар</label><div class="value" id="detailAvatar">-</div></div>
+                <div class="detail-field"><label>Тем создано</label><div class="value" id="detailThreads">0</div></div>
+                <div class="detail-field"><label>Сообщений</label><div class="value" id="detailPosts">0</div></div>
+                <div class="detail-field"><label>Подписчиков</label><div class="value" id="detailFollowers">0</div></div>
+                <div class="detail-field"><label>Подписок</label><div class="value" id="detailFollowing">0</div></div>
+                <div class="detail-field"><label>Репутация</label><div class="value" id="detailReputation">0</div></div>
+                <div class="detail-field"><label>Дата регистрации</label><div class="value" id="detailCreated">-</div></div>
+                <div class="detail-field"><label>Последняя активность</label><div class="value" id="detailUpdated">-</div></div>
+                <div class="detail-field"><label>Заблокирован</label><div class="value" id="detailBanned">Нет</div></div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;">
+                <button class="btn btn-danger" onclick="banUserFromDetail()">🚫 Заблокировать</button>
+                <button class="btn btn-success" onclick="unbanUserFromDetail()">✅ Разблокировать</button>
+                <button class="btn btn-admin" onclick="changeRankFromDetail()">⚡ Изменить ранг</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE -->
+    <script type="module" src="firebase-config.js"></script>
+    <script type="module" src="admin-script.js"></script>
+</body>
+</html>
