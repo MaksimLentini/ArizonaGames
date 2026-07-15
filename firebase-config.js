@@ -1,13 +1,40 @@
 // ============================================
-// 🔥 КОНФИГУРАЦИЯ FIREBASE
+// 🔥 ИМПОРТЫ FIREBASE SDK
 // ============================================
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { 
+    getAuth, 
+    onAuthStateChanged,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    sendEmailVerification,
+    sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { 
+    getFirestore,
+    collection,
+    doc,
+    addDoc,
+    getDocs,
+    getDoc,
+    deleteDoc,
+    updateDoc,
+    setDoc,
+    query,
+    where,
+    orderBy,
+    onSnapshot,
+    serverTimestamp,
+    writeBatch,
+    arrayUnion,
+    arrayRemove
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Ваша конфигурация Firebase
+// ============================================
+// 🔥 ТВОЯ КОНФИГУРАЦИЯ
+// ============================================
 const firebaseConfig = {
     apiKey: "AIzaSyDBeypd4mT0sIxDTPJnQ1_HSg8TioceY58",
     authDomain: "arizonagames-2c62c.firebaseapp.com",
@@ -18,17 +45,82 @@ const firebaseConfig = {
     measurementId: "G-DMBYN7V8MP"
 };
 
-// Инициализация Firebase
+// ============================================
+// 🔥 ИНИЦИАЛИЗАЦИЯ
+// ============================================
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Делаем объекты доступными глобально
-window.firebaseApp = app;
+// ============================================
+// 🔥 ЭКСПОРТ ДЛЯ ИСПОЛЬЗОВАНИЯ
+// ============================================
+window.app = app;
 window.analytics = analytics;
 window.auth = auth;
 window.db = db;
 
+// Делаем всё доступным глобально
+window.firebase = {
+    app,
+    analytics,
+    auth,
+    db,
+    // Auth functions
+    onAuthStateChanged,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    sendEmailVerification,
+    sendPasswordResetEmail,
+    // Firestore functions
+    collection,
+    doc,
+    addDoc,
+    getDocs,
+    getDoc,
+    deleteDoc,
+    updateDoc,
+    setDoc,
+    query,
+    where,
+    orderBy,
+    onSnapshot,
+    serverTimestamp,
+    writeBatch,
+    arrayUnion,
+    arrayRemove
+};
+
+// ============================================
+// 🔥 ПРОВЕРКА ПОДКЛЮЧЕНИЯ
+// ============================================
 console.log('🔥 Firebase инициализирован успешно!');
 console.log('📊 Проект:', firebaseConfig.projectId);
+console.log('🔑 Auth:', auth ? '✅' : '❌');
+console.log('🗄️ Firestore:', db ? '✅' : '❌');
+
+// Проверяем подключение к Firestore (читаем тестовый документ)
+try {
+    const testDoc = doc(db, '_test', 'test');
+    getDoc(testDoc).then(() => {
+        console.log('✅ Подключение к Firestore установлено');
+    }).catch((error) => {
+        console.warn('⚠️ Firestore недоступна:', error.message);
+        console.log('📌 Проверьте правила безопасности в Firebase Console → Firestore → Rules');
+    });
+} catch (error) {
+    console.warn('⚠️ Ошибка проверки Firestore:', error.message);
+}
+
+// Проверяем авторизацию
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        console.log('👤 Пользователь авторизован:', user.email);
+    } else {
+        console.log('👤 Пользователь не авторизован');
+    }
+});
+
+console.log('✅ Firebase готов к работе!');

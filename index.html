@@ -30,7 +30,10 @@
                 </div>
                 <div class="user-panel" id="userPanel">
                     <div class="user-profile" id="userInfo" style="display:none;">
-                        <div class="user-avatar" id="userAvatar">U</div>
+                        <div class="user-avatar" id="userAvatar" onclick="openProfile()" style="cursor:pointer;">
+                            <img id="avatarImg" src="" alt="Avatar" />
+                            <span id="avatarLetter">U</span>
+                        </div>
                         <div class="user-data">
                             <span class="user-name" id="currentUser">Пользователь</span>
                             <span class="user-status active">● Онлайн</span>
@@ -103,10 +106,16 @@
                     </div>
                 </div>
 
-                <!-- СТРАНИЦЫ (Rules, Help, Contact, Privacy) -->
+                <!-- СТРАНИЦЫ -->
                 <div id="pageView" style="display:none;">
                     <button class="btn btn-outline back-btn" onclick="closePage()">← Назад к форуму</button>
                     <div id="pageContainer"></div>
+                </div>
+
+                <!-- ПРОФИЛЬ -->
+                <div id="profileView" style="display:none;">
+                    <button class="btn btn-outline back-btn" onclick="closeProfile()">← Назад к форуму</button>
+                    <div id="profileContainer"></div>
                 </div>
             </div>
         </main>
@@ -235,7 +244,6 @@
             <div class="divider"></div>
 
             <div id="adminActions" style="display:none;">
-                <!-- Create Category -->
                 <div class="admin-section">
                     <h3>Создать раздел</h3>
                     <div class="admin-grid">
@@ -253,7 +261,6 @@
 
                 <div class="divider"></div>
 
-                <!-- Create Thread -->
                 <div class="admin-section">
                     <h3>Создать тему</h3>
                     <div class="field-group">
@@ -271,6 +278,35 @@
                     <button class="btn btn-primary" onclick="addThread()">+ Создать тему</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- PROFILE MODAL (для редактирования) -->
+    <div class="modal" id="profileEditModal">
+        <div class="modal-overlay" onclick="closeModal('profileEditModal')"></div>
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal('profileEditModal')">×</button>
+            <div class="modal-head">
+                <div class="modal-icon">👤</div>
+                <h2>Редактировать профиль</h2>
+                <p>Измените свои данные</p>
+            </div>
+            <form id="profileForm" onsubmit="event.preventDefault(); saveProfile();">
+                <div class="field-group">
+                    <label>Имя пользователя</label>
+                    <input type="text" id="editUsername" placeholder="Ваше имя" />
+                </div>
+                <div class="field-group">
+                    <label>Описание / Статус</label>
+                    <textarea id="editBio" placeholder="Расскажите о себе..." rows="3"></textarea>
+                </div>
+                <div class="field-group">
+                    <label>Ссылка на аватарку (URL)</label>
+                    <input type="url" id="editAvatar" placeholder="https://example.com/avatar.jpg" />
+                    <p style="font-size:12px;color:var(--text-muted);margin-top:4px;">Вставьте прямую ссылку на изображение</p>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Сохранить изменения</button>
+            </form>
         </div>
     </div>
 

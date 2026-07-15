@@ -61,6 +61,7 @@ onAuthStateChanged(auth, (user) => {
         updateUI();
         loadStats();
         renderCategories();
+        loadUserProfile(user.uid);
     } else {
         currentUser = null;
         isAdmin = false;
@@ -79,6 +80,142 @@ async function checkAdminStatus(uid) {
         isAdmin = false;
     }
 }
+
+// ============================================
+// PROFILE FUNCTIONS
+// ============================================
+
+let currentProfileData = {};
+
+async function loadUserProfile(uid) {
+    try {
+        const userDoc = await getDoc(doc(db, 'users', uid));
+        if (userDoc.exists()) {
+            currentProfileData = userDoc.data();
+            updateUI();
+        }
+    } catch (error) {
+        console.error('Profile load error:', error);
+    }
+}
+
+window.openProfile = function() {
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
+        return;
+    }
+    
+    const forumView = document.getElementById('forumView');
+    const profileView = document.getElementById('profileView');
+    const container = document.getElementById('profileContainer');
+    
+    forumView.style.display = 'none';
+    profileView.style.display = 'block';
+    
+    getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
+        const data = docSnap.exists() ? docSnap.data() : {};
+        
+        const avatarUrl = data.avatar || '';
+        const username = data.username || currentUser.email;
+        const bio = data.bio || 'Пользователь пока ничего не рассказал о себе';
+        const createdAt = data.createdAt ? formatDate(data.createdAt) : 'Неизвестно';
+        
+        container.innerHTML = `
+            <div class="profile-card">
+                <div class="profile-header">
+                    <div class="profile-avatar-wrapper">
+                        ${avatarUrl ? 
+                            `<img src="${avatarUrl}" alt="Avatar" class="profile-avatar-img" />` : 
+                            `<div class="profile-avatar-letter">${username[0].toUpperCase()}</div>`
+                        }
+                        <button class="btn btn-outline btn-sm profile-edit-btn" onclick="openProfileEdit()">
+                            ✏️ Редактировать
+                        </button>
+                    </div>
+                    <div class="profile-info">
+                        <h1 class="profile-name">${username}</h1>
+                        <div class="profile-bio">${bio}</div>
+                        <div class="profile-meta">
+                            <span>📅 Присоединился: ${createdAt}</span>
+                            ${isAdmin ? '<span class="role-badge" style="display:inline-block;">👑 Администратор</span>' : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <span class="profile-stat-number">${data.postsCount || 0}</span>
+                        <span class="profile-stat-label">Сообщений</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="profile-stat-number">${data.threadsCount || 0}</span>
+                        <span class="profile-stat-label">Тем создано</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="profile-stat-number">${data.reputation || 0}</span>
+                        <span class="profile-stat-label">Репутация</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).catch(error => {
+        console.error('Profile render error:', error);
+        container.innerHTML = `<div class="empty-state"><span class="empty-icon">⚠️</span><p>Ошибка загрузки профиля</p></div>`;
+    });
+};
+
+window.openProfileEdit = function() {
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
+        return;
+    }
+    
+    getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
+        const data = docSnap.exists() ? docSnap.data() : {};
+        document.getElementById('editUsername').value = data.username || '';
+        document.getElementById('editBio').value = data.bio || '';
+        document.getElementById('editAvatar').value = data.avatar || '';
+        openModal('profileEditModal');
+    });
+};
+
+window.saveProfile = async function() {
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
+        return;
+    }
+    
+    const username = document.getElementById('editUsername').value.trim();
+    const bio = document.getElementById('editBio').value.trim();
+    const avatar = document.getElementById('editAvatar').value.trim();
+    
+    if (!username) {
+        showToast('Введите имя пользователя', 'error');
+        return;
+    }
+    
+    try {
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+            username: username,
+            bio: bio || 'Пользователь пока ничего не рассказал о себе',
+            avatar: avatar || '',
+            updatedAt: serverTimestamp()
+        });
+        
+        currentProfileData = { username, bio, avatar };
+        closeModal('profileEditModal');
+        showToast('Профиль обновлён!', 'success');
+        updateUI();
+        openProfile();
+    } catch (error) {
+        showToast('Ошибка: ' + error.message, 'error');
+    }
+};
+
+window.closeProfile = function() {
+    document.getElementById('profileView').style.display = 'none';
+    document.getElementById('forumView').style.display = 'block';
+    renderCategories();
+};
 
 // ============================================
 // AUTH FUNCTIONS
@@ -116,8 +253,13 @@ window.registerUser = async function() {
         await setDoc(doc(db, 'users', user.uid), {
             username: username,
             email: email,
+            bio: 'Пользователь пока ничего не рассказал о себе',
+            avatar: '',
             createdAt: serverTimestamp(),
-            uid: user.uid
+            uid: user.uid,
+            postsCount: 0,
+            threadsCount: 0,
+            reputation: 0
         });
 
         closeModal('registerModal');
@@ -274,6 +416,16 @@ window.addThread = async function() {
             replies: 0
         });
 
+        // Обновляем счётчик тем у пользователя
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+            await updateDoc(userRef, {
+                threadsCount: (data.threadsCount || 0) + 1
+            });
+        }
+
         document.getElementById('newThreadTitle').value = '';
         document.getElementById('newThreadContent').value = '';
         showToast('Тема создана!', 'success');
@@ -310,7 +462,8 @@ window.deleteThread = async function(threadId) {
 function updateUI() {
     const userInfo = document.getElementById('userInfo');
     const userName = document.getElementById('currentUser');
-    const avatar = document.getElementById('userAvatar');
+    const avatarLetter = document.getElementById('avatarLetter');
+    const avatarImg = document.getElementById('avatarImg');
     const adminBadge = document.getElementById('adminBadge');
     const loginBtn = document.getElementById('loginBtn');
     const registerBtn = document.getElementById('registerBtn');
@@ -322,11 +475,17 @@ function updateUI() {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 userName.textContent = data.username || currentUser.email;
-                avatar.textContent = (data.username || currentUser.email)[0].toUpperCase();
+                
+                if (data.avatar) {
+                    avatarImg.src = data.avatar;
+                    avatarImg.style.display = 'block';
+                    avatarLetter.style.display = 'none';
+                } else {
+                    avatarImg.style.display = 'none';
+                    avatarLetter.style.display = 'flex';
+                    avatarLetter.textContent = (data.username || currentUser.email)[0].toUpperCase();
+                }
             }
-        }).catch(() => {
-            userName.textContent = currentUser.email;
-            avatar.textContent = currentUser.email[0].toUpperCase();
         });
         userInfo.style.display = 'flex';
         adminBadge.style.display = isAdmin ? 'inline' : 'none';
@@ -425,7 +584,6 @@ async function renderCategories() {
                 <div class="empty-state">
                     <span class="empty-icon">⚠️</span>
                     <p>Ошибка загрузки данных</p>
-                    <p style="font-size: 12px; color: var(--text-muted);">Проверьте подключение к Firebase</p>
                     <button class="btn btn-primary" onclick="renderCategories()" style="margin-top: 12px;">Обновить</button>
                 </div>
             </div>
@@ -544,6 +702,16 @@ window.addPost = async function(threadId) {
             content: content,
             createdAt: serverTimestamp()
         });
+
+        // Обновляем счётчик постов у пользователя
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+            const data = userSnap.data();
+            await updateDoc(userRef, {
+                postsCount: (data.postsCount || 0) + 1
+            });
+        }
 
         try {
             const threadDoc = await getDoc(doc(db, 'threads', threadId));
@@ -786,7 +954,10 @@ try {
             document.getElementById('threadView').style.display === 'none') {
             if (!document.getElementById('pageView').style.display || 
                 document.getElementById('pageView').style.display === 'none') {
-                renderCategories();
+                if (!document.getElementById('profileView').style.display || 
+                    document.getElementById('profileView').style.display === 'none') {
+                    renderCategories();
+                }
             }
         }
     });
@@ -800,7 +971,10 @@ try {
             document.getElementById('threadView').style.display === 'none') {
             if (!document.getElementById('pageView').style.display || 
                 document.getElementById('pageView').style.display === 'none') {
-                renderCategories();
+                if (!document.getElementById('profileView').style.display || 
+                    document.getElementById('profileView').style.display === 'none') {
+                    renderCategories();
+                }
             }
         }
     });
