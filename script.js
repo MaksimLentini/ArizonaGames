@@ -128,6 +128,7 @@ onAuthStateChanged(auth, async (user) => {
         updateUI();
         loadStats();
         renderCategories();
+        updateAdminCategoryDeleteSelect();
     } else {
         currentUser = null;
         currentUserData = null;
@@ -579,7 +580,7 @@ window.searchUserForAdmin = async function() {
                 (текущий ранг: ${getRankName(currentRank)})
                 ${found.id === currentUser.uid ? ' <span style="color:var(--warning);">(это вы)</span>' : ''}
             `;
-            resultDiv.style.display = 'block';
+            resultDiv.style.display = 'flex';
             
             const grantBtn = resultDiv.querySelector('.btn-success');
             if (found.rank === 'admin' || found.rank === 'owner') {
@@ -591,7 +592,7 @@ window.searchUserForAdmin = async function() {
         } else {
             foundUserForAdmin = null;
             nameSpan.textContent = `❌ Пользователь "${username}" не найден`;
-            resultDiv.style.display = 'block';
+            resultDiv.style.display = 'flex';
             const grantBtn = resultDiv.querySelector('.btn-success');
             if (grantBtn) grantBtn.style.display = 'none';
         }
@@ -639,6 +640,56 @@ window.grantAdmin = async function() {
         showToast('Ошибка: ' + error.message, 'error');
     }
 };
+
+// ============================================
+// УДАЛЕНИЕ РАЗДЕЛА
+// ============================================
+window.deleteCategory = async function() {
+    if (!isAdmin) {
+        showToast('Требуются права администратора', 'error');
+        return;
+    }
+
+    const categoryId = document.getElementById('adminCategoryDeleteSelect').value;
+    if (!categoryId) {
+        showToast('Выберите раздел для удаления', 'error');
+        return;
+    }
+
+    if (!confirm('Удалить этот раздел и все темы в нём?')) return;
+
+    try {
+        const threadsQuery = query(collection(db, 'threads'), where('categoryId', '==', categoryId));
+        const threadsSnapshot = await getDocs(threadsQuery);
+        const deletePromises = threadsSnapshot.docs.map(d => deleteDoc(doc(db, 'threads', d.id)));
+        await Promise.all(deletePromises);
+
+        await deleteDoc(doc(db, 'categories', categoryId));
+
+        showToast('Раздел удалён!', 'success');
+        renderCategories();
+        updateAdminCategorySelect();
+        updateAdminCategoryDeleteSelect();
+    } catch (error) {
+        showToast('Ошибка: ' + error.message, 'error');
+    }
+};
+
+function updateAdminCategoryDeleteSelect() {
+    const select = document.getElementById('adminCategoryDeleteSelect');
+    select.innerHTML = '<option value="">Выберите раздел</option>';
+    getDocs(collection(db, 'categories')).then(snapshot => {
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = data.name;
+            select.appendChild(option);
+        });
+    }).catch(error => {
+        console.error('Category delete select error:', error);
+    });
+}
 
 // ============================================
 // AUTH
@@ -775,6 +826,7 @@ window.verifyAdmin = async function() {
                 document.getElementById('adminPassword').value = '';
                 updateUI();
                 updateAdminCategorySelect();
+                updateAdminCategoryDeleteSelect();
                 showToast('Права администратора получены!', 'success');
             } catch (error) {
                 showToast('Ошибка: ' + error.message, 'error');
@@ -828,6 +880,7 @@ window.addCategory = async function() {
         showToast('Раздел создан!', 'success');
         renderCategories();
         updateAdminCategorySelect();
+        updateAdminCategoryDeleteSelect();
     } catch (error) {
         showToast('Ошибка: ' + error.message, 'error');
     }
@@ -977,7 +1030,7 @@ function updateUI() {
 async function renderCategories() {
     const container = document.getElementById('categoriesContainer');
     const counter = document.getElementById('categoriesCount');
-    container.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Загрузка разделов...</p></div>';
+    container.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Загрузка...</p></div>';
 
     try {
         const categoriesSnapshot = await getDocs(collection(db, 'categories'));
@@ -986,14 +1039,14 @@ async function renderCategories() {
             categories.push({ id: doc.id, ...doc.data() });
         });
 
-        counter.textContent = `${categories.length} разделов`;
+        counter.textContent = `${categories.length}`;
 
         if (categories.length === 0) {
             container.innerHTML = `
                 <div class="forum-category">
                     <div class="empty-state">
                         <span class="empty-icon">📋</span>
-                        <p>Нет созданных разделов</p>
+                        <p>Нет разделов</p>
                     </div>
                 </div>
             `;
@@ -1014,11 +1067,11 @@ async function renderCategories() {
                 <div class="forum-category">
                     <div class="category-header">
                         <h4>${category.name}</h4>
-                        <span class="category-meta">${categoryThreads.length} тем</span>
+                        <span class="category-meta">${categoryThreads.length}</span>
                     </div>
-                    <div class="category-desc">${category.description || 'Описание отсутствует'}</div>
+                    <div class="category-desc">${category.description || ''}</div>
                     ${categoryThreads.length === 0 ? 
-                        `<div class="empty-state" style="padding:16px 0;font-size:14px;">В этом разделе пока нет тем</div>` :
+                        `<div class="empty-state" style="padding:12px 0;font-size:13px;">Нет тем</div>` :
                         `<ul class="topic-list">
                             ${categoryThreads.map(thread => {
                                 const isClosed = thread.closed || false;
@@ -1039,7 +1092,7 @@ async function renderCategories() {
                                             <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openProfile(event, '${thread.authorId}')">👤</button>
                                             ${isAdmin ? `
                                                 <button class="btn btn-warning btn-sm" onclick="event.stopPropagation(); closeThread('${thread.id}')">
-                                                    ${isClosed ? '🔓 Открыть' : '🔒 Закрыть'}
+                                                    ${isClosed ? '🔓' : '🔒'}
                                                 </button>
                                                 <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteThread('${thread.id}')">🗑️</button>
                                             ` : ''}
@@ -1062,8 +1115,8 @@ async function renderCategories() {
             <div class="forum-category">
                 <div class="empty-state">
                     <span class="empty-icon">⚠️</span>
-                    <p>Ошибка загрузки данных</p>
-                    <button class="btn btn-primary" onclick="renderCategories()" style="margin-top: 12px;">Обновить</button>
+                    <p>Ошибка загрузки</p>
+                    <button class="btn btn-primary" onclick="renderCategories()" style="margin-top:12px;">Обновить</button>
                 </div>
             </div>
         `;
@@ -1086,7 +1139,7 @@ window.openThread = async function(threadId) {
 
     categoriesView.style.display = 'none';
     threadView.style.display = 'block';
-    container.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Загрузка темы...</p></div>';
+    container.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Загрузка...</p></div>';
 
     try {
         const threadRef = doc(db, 'threads', threadId);
@@ -1128,17 +1181,17 @@ window.openThread = async function(threadId) {
                         <span>📅 ${formatDate(thread.createdAt)}</span>
                         <span>👁 ${(thread.views || 0) + 1}</span>
                         <span>💬 ${posts.length}</span>
-                        ${isClosed ? '<span style="color:var(--danger);font-weight:700;">🔒 Тема закрыта</span>' : ''}
+                        ${isClosed ? '<span style="color:var(--danger);font-weight:700;">🔒 Закрыта</span>' : ''}
                     </div>
                 </div>
-                <div class="thread-body">${thread.content || 'Содержание отсутствует'}</div>
+                <div class="thread-body">${thread.content || ''}</div>
                 <div class="thread-admin-actions">
-                    <button class="btn btn-outline btn-sm" onclick="openProfile(event, '${thread.authorId}')">👤 Профиль автора</button>
+                    <button class="btn btn-outline btn-sm" onclick="openProfile(event, '${thread.authorId}')">👤</button>
                     ${isAdmin ? `
                         <button class="btn btn-warning btn-sm" onclick="closeThread('${threadId}')">
                             ${isClosed ? '🔓 Открыть' : '🔒 Закрыть'}
                         </button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteThread('${threadId}')">🗑️ Удалить</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteThread('${threadId}')">🗑️</button>
                     ` : ''}
                 </div>
             </div>
@@ -1149,7 +1202,7 @@ window.openThread = async function(threadId) {
             
             <div id="postsContainer">
                 ${posts.length === 0 ? 
-                    '<div class="empty-state"><span class="empty-icon">💬</span><p>Пока нет ответов</p></div>' :
+                    '<div class="empty-state"><span class="empty-icon">💬</span><p>Нет ответов</p></div>' :
                     posts.map(post => `
                         <div class="post-item">
                             <div class="post-head">
@@ -1171,18 +1224,18 @@ window.openThread = async function(threadId) {
             ${currentUser ? `
                 ${isClosed ? `
                     <div style="margin-top:20px;padding:20px;background:var(--dark-card);border-radius:var(--radius);text-align:center;border:1px solid var(--danger);">
-                        <p style="color:var(--danger);">🔒 Эта тема закрыта для ответов</p>
+                        <p style="color:var(--danger);">🔒 Тема закрыта</p>
                     </div>
                 ` : `
                     <div class="reply-section">
-                        <h4>✏️ Написать ответ</h4>
+                        <h4>✏️ Ответ</h4>
                         <textarea id="newPostContent" placeholder="Введите текст..."></textarea>
                         <button class="btn btn-primary" onclick="addPost('${threadId}')">📤 Отправить</button>
                     </div>
                 `}
             ` : `
                 <div style="margin-top:20px;padding:20px;background:var(--dark-card);border-radius:var(--radius);text-align:center;border:1px solid var(--border);">
-                    <p style="color:var(--text-muted);">🔑 Войдите в аккаунт, чтобы ответить</p>
+                    <p style="color:var(--text-muted);">🔑 Войдите чтобы ответить</p>
                 </div>
             `}
         `;
@@ -1191,8 +1244,8 @@ window.openThread = async function(threadId) {
         container.innerHTML = `
             <div class="empty-state">
                 <span class="empty-icon">⚠️</span>
-                <p>Ошибка загрузки темы: ${error.message}</p>
-                <button class="btn btn-primary" onclick="showCategoriesView()" style="margin-top: 12px;">← Назад</button>
+                <p>Ошибка: ${error.message}</p>
+                <button class="btn btn-primary" onclick="showCategoriesView()" style="margin-top:12px;">← Назад</button>
             </div>
         `;
     }
@@ -1201,7 +1254,7 @@ window.openThread = async function(threadId) {
 window.addPost = async function(threadId) {
     const content = document.getElementById('newPostContent').value.trim();
     if (!content) {
-        showToast('Введите текст ответа', 'error');
+        showToast('Введите текст', 'error');
         return;
     }
 
@@ -1384,37 +1437,37 @@ window.showPage = function(page) {
     
     const pages = {
         rules: {
-            title: '📜 Правила сообщества',
-            subtitle: 'Основные правила поведения на форуме',
+            title: '📜 Правила',
+            subtitle: 'Правила поведения на форуме',
             sections: [
-                { title: '1. Уважение к участникам', content: 'Относитесь с уважением ко всем участникам сообщества. Запрещены: оскорбления, угрозы, дискриминация, травля.' },
-                { title: '2. Запрещенный контент', content: 'Запрещена публикация: порнографического контента, материалов, пропагандирующих насилие, спама, рекламы без разрешения.' },
-                { title: '3. Правила общения', content: 'Общайтесь на русском языке в основных разделах. Используйте понятные заголовки для тем.' }
+                { title: '1. Уважение', content: 'Относитесь с уважением ко всем. Запрещены: оскорбления, угрозы, дискриминация.' },
+                { title: '2. Запрещенный контент', content: 'Запрещена публикация: порнографии, материалов с насилием, спама, рекламы.' },
+                { title: '3. Общение', content: 'Общайтесь на русском языке. Используйте понятные заголовки.' }
             ]
         },
         help: {
             title: '❓ Помощь',
             subtitle: 'Часто задаваемые вопросы',
             sections: [
-                { title: 'Как зарегистрироваться?', content: 'Нажмите на кнопку "Регистрация" в правом верхнем углу, заполните форму.' },
+                { title: 'Как зарегистрироваться?', content: 'Нажмите "Регистрация" в правом верхнем углу.' },
                 { title: 'Как создать тему?', content: 'Войдите в аккаунт и используйте админ-панель.' },
-                { title: 'Как получить права администратора?', content: 'Обратитесь к действующему администратору.' }
+                { title: 'Как получить права администратора?', content: 'Обратитесь к администратору.' }
             ]
         },
         contact: {
             title: '📞 Контакты',
-            subtitle: 'Свяжитесь с администрацией',
+            subtitle: 'Связь с администрацией',
             contacts: [
                 { icon: '💬', label: 'Discord', value: 'lentini321321' }
             ]
         },
         privacy: {
             title: '🔒 Конфиденциальность',
-            subtitle: 'Как мы обрабатываем ваши данные',
+            subtitle: 'Обработка данных',
             sections: [
-                { title: 'Какие данные мы собираем', content: 'Имя пользователя, email, пароль. Данные о активности на форуме.' },
-                { title: 'Как мы используем данные', content: 'Для авторизации, отображения профиля, улучшения работы сервиса.' },
-                { title: 'Безопасность данных', content: 'Все данные защищены шифрованием. Пароли хранятся в зашифрованном виде.' }
+                { title: 'Какие данные мы собираем', content: 'Имя пользователя, email, пароль. Данные о активности.' },
+                { title: 'Как мы используем данные', content: 'Для авторизации, отображения профиля, улучшения работы.' },
+                { title: 'Безопасность', content: 'Все данные защищены шифрованием. Пароли хранятся в зашифрованном виде.' }
             ]
         }
     };
@@ -1475,6 +1528,7 @@ try {
                 if (!document.getElementById('profileView').style.display || 
                     document.getElementById('profileView').style.display === 'none') {
                     renderCategories();
+                    updateAdminCategoryDeleteSelect();
                 }
             }
         }
@@ -1509,7 +1563,11 @@ setInterval(() => {
 window.refreshForum = function() {
     showToast('Обновление...', 'success');
     renderCategories();
+    updateAdminCategoryDeleteSelect();
 };
 
-console.log('🚀 Arizona RP Forum loaded!');
-setTimeout(() => { renderCategories(); }, 500);
+console.log('🚀 Forum Sell loaded!');
+setTimeout(() => { 
+    renderCategories(); 
+    updateAdminCategoryDeleteSelect();
+}, 500);

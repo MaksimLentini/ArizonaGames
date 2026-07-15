@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Arizona RolePlay Форум</title>
+    <title>Forum Sell</title>
     <link rel="stylesheet" href="style.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
 </head>
@@ -19,8 +19,8 @@
         <div class="preloader" id="preloader">
             <div class="preloader-content">
                 <div class="preloader-ring"></div>
-                <div class="preloader-logo">AZ</div>
-                <p>Загрузка форума...</p>
+                <div class="preloader-logo">FS</div>
+                <p>Загрузка...</p>
             </div>
         </div>
 
@@ -28,10 +28,10 @@
         <header class="header" id="mainHeader">
             <div class="container header-content">
                 <div class="brand">
-                    <div class="brand-icon">AZ</div>
+                    <div class="brand-icon">FS</div>
                     <div class="brand-text">
-                        <h1>Arizona <span>RP</span></h1>
-                        <span class="brand-sub">RolePlay Сообщество</span>
+                        <h1>Forum <span>Sell</span></h1>
+                        <span class="brand-sub">RolePlay Community</span>
                     </div>
                 </div>
                 <div class="user-panel" id="userPanel">
@@ -60,9 +60,9 @@
                 <!-- HERO -->
                 <section class="hero">
                     <div class="hero-content">
-                        <div class="hero-tag">ЖИВОЕ СООБЩЕСТВО</div>
-                        <h2>Добро пожаловать в <span>Arizona RP</span></h2>
-                        <p>Крупнейшее RolePlay сообщество. Изменения видны всем в реальном времени!</p>
+                        <div class="hero-tag">LIVE COMMUNITY</div>
+                        <h2>Добро пожаловать в <span>Forum Sell</span></h2>
+                        <p>Крупнейшее RP сообщество. Изменения видны всем в реальном времени!</p>
                         <div class="hero-stats">
                             <div class="hero-stat">
                                 <span class="hero-stat-number" id="heroUsers">0</span>
@@ -93,37 +93,37 @@
                 <!-- FORUM -->
                 <div id="forumView">
                     <div id="categoriesView">
-                        <div class="section-toolbar">
-                            <h3>Разделы форума</h3>
-                            <span class="section-counter" id="categoriesCount">0 разделов</span>
-                            <div style="display:flex;gap:8px;">
-                                <button class="btn btn-admin btn-sm" onclick="openModal('adminModal')">Админ</button>
-                                <button class="btn btn-success btn-sm" onclick="refreshForum()">Обновить</button>
+                        <div class="section-toolbar" style="margin-bottom:8px;">
+                            <h3 style="font-size:14px;font-weight:600;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;">Разделы форума</h3>
+                            <span class="section-counter" style="font-size:11px;" id="categoriesCount">0</span>
+                            <div style="display:flex;gap:6px;">
+                                <button class="btn btn-admin btn-sm" style="font-size:11px;padding:4px 12px;" onclick="openModal('adminModal')">Админ</button>
+                                <button class="btn btn-success btn-sm" style="font-size:11px;padding:4px 12px;" onclick="refreshForum()">Обн.</button>
                             </div>
                         </div>
                         <div id="categoriesContainer">
                             <div class="loading-state">
                                 <div class="loading-spinner"></div>
-                                <p>Загрузка разделов...</p>
+                                <p>Загрузка...</p>
                             </div>
                         </div>
                     </div>
 
                     <div id="threadView" style="display:none;">
-                        <button class="btn btn-outline back-btn" onclick="showCategoriesView()">← Назад к разделам</button>
+                        <button class="btn btn-outline back-btn" onclick="showCategoriesView()">← Назад</button>
                         <div id="threadContainer"></div>
                     </div>
                 </div>
 
                 <!-- СТРАНИЦЫ -->
                 <div id="pageView" style="display:none;">
-                    <button class="btn btn-outline back-btn" onclick="closePage()">← Назад к форуму</button>
+                    <button class="btn btn-outline back-btn" onclick="closePage()">← Назад</button>
                     <div id="pageContainer"></div>
                 </div>
 
                 <!-- ПРОФИЛЬ -->
                 <div id="profileView" style="display:none;">
-                    <button class="btn btn-outline back-btn" onclick="closeProfile()">← Назад к форуму</button>
+                    <button class="btn btn-outline back-btn" onclick="closeProfile()">← Назад</button>
                     <div id="profileContainer"></div>
                 </div>
             </div>
@@ -134,8 +134,8 @@
             <div class="container">
                 <div class="footer-grid">
                     <div class="footer-brand">
-                        <div class="footer-logo">Arizona RP</div>
-                        <p>RolePlay Сообщество</p>
+                        <div class="footer-logo">Forum Sell</div>
+                        <p>RolePlay Community</p>
                     </div>
                     <div class="footer-nav">
                         <a href="#" onclick="showPage('rules'); return false;">Правила</a>
@@ -144,7 +144,7 @@
                         <a href="#" onclick="showPage('privacy'); return false;">Конфиденциальность</a>
                     </div>
                     <div class="footer-copy">
-                        <p>&copy; 2025 Arizona RP. Все права защищены.</p>
+                        <p>&copy; 2025 Forum Sell. Все права защищены.</p>
                     </div>
                 </div>
             </div>
@@ -168,7 +168,7 @@
             <button class="modal-close" onclick="closeModal('loginModal')">×</button>
             <div class="modal-head">
                 <div class="modal-icon">🔐</div>
-                <h2>Вход в аккаунт</h2>
+                <h2>Вход</h2>
                 <p>Войдите чтобы продолжить</p>
             </div>
             <form id="loginForm" onsubmit="event.preventDefault(); loginUser();">
@@ -196,8 +196,8 @@
             <button class="modal-close" onclick="closeModal('registerModal')">×</button>
             <div class="modal-head">
                 <div class="modal-icon">📝</div>
-                <h2>Создать аккаунт</h2>
-                <p>Присоединяйтесь к сообществу</p>
+                <h2>Регистрация</h2>
+                <p>Присоединяйтесь</p>
             </div>
             <form id="registerForm" onsubmit="event.preventDefault(); registerUser();">
                 <div class="field-group">
@@ -209,7 +209,7 @@
                     <input type="email" id="regEmail" placeholder="you@example.com" required />
                 </div>
                 <div class="field-group">
-                    <label>Пароль (минимум 6 символов)</label>
+                    <label>Пароль (мин. 6 символов)</label>
                     <div class="field-password">
                         <input type="password" id="regPassword" placeholder="Придумайте пароль" required />
                         <button type="button" class="field-toggle" onclick="togglePassword('regPassword', this)">Показать</button>
@@ -222,7 +222,7 @@
                         <button type="button" class="field-toggle" onclick="togglePassword('regPasswordConfirm', this)">Показать</button>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-success btn-block">Создать аккаунт</button>
+                <button type="submit" class="btn btn-success btn-block">Создать</button>
             </form>
             <p class="modal-footer-text">Уже есть аккаунт? <span onclick="switchModal('registerModal','loginModal')">Войти</span></p>
         </div>
@@ -241,7 +241,7 @@
 
             <div class="admin-verify">
                 <div class="field-group">
-                    <label>Код доступа администратора</label>
+                    <label>Код доступа</label>
                     <div class="field-password">
                         <input type="password" id="adminPassword" placeholder="Введите код" />
                         <button type="button" class="field-toggle" onclick="togglePassword('adminPassword', this)">Показать</button>
@@ -257,16 +257,28 @@
                 <div class="admin-section">
                     <h3>Выдать права администратора</h3>
                     <div class="field-group">
-                        <label>Введите ник пользователя</label>
+                        <label>Ник пользователя</label>
                         <div style="display:flex;gap:8px;">
-                            <input type="text" id="adminUserSearch" placeholder="Ник пользователя" style="flex:1;" />
+                            <input type="text" id="adminUserSearch" placeholder="Ник" style="flex:1;" />
                             <button class="btn btn-admin" onclick="searchUserForAdmin()">Найти</button>
                         </div>
                     </div>
-                    <div id="userSearchResult" style="display:none;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:12px;">
+                    <div id="userSearchResult" style="display:none;padding:12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:12px;flex-wrap:wrap;gap:10px;align-items:center;">
                         <span id="userSearchName"></span>
-                        <button class="btn btn-success btn-sm" onclick="grantAdmin()" style="margin-left:12px;">Выдать права</button>
+                        <button class="btn btn-success btn-sm" onclick="grantAdmin()" style="margin-left:auto;">Выдать права</button>
                     </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- УДАЛЕНИЕ РАЗДЕЛА -->
+                <div class="admin-section">
+                    <h3>Удалить раздел</h3>
+                    <div class="field-group">
+                        <label>Выберите раздел</label>
+                        <select id="adminCategoryDeleteSelect"></select>
+                    </div>
+                    <button class="btn btn-danger" onclick="deleteCategory()">🗑️ Удалить раздел</button>
                 </div>
 
                 <div class="divider"></div>
@@ -275,15 +287,15 @@
                     <h3>Создать раздел</h3>
                     <div class="admin-grid">
                         <div class="field-group">
-                            <label>Название раздела</label>
-                            <input type="text" id="newCategoryName" placeholder="Например: Общие обсуждения" />
+                            <label>Название</label>
+                            <input type="text" id="newCategoryName" placeholder="Название" />
                         </div>
                         <div class="field-group">
                             <label>Описание</label>
-                            <input type="text" id="newCategoryDesc" placeholder="Краткое описание" />
+                            <input type="text" id="newCategoryDesc" placeholder="Описание" />
                         </div>
                     </div>
-                    <button class="btn btn-success" onclick="addCategory()">+ Создать раздел</button>
+                    <button class="btn btn-success" onclick="addCategory()">+ Создать</button>
                 </div>
 
                 <div class="divider"></div>
@@ -291,18 +303,18 @@
                 <div class="admin-section">
                     <h3>Создать тему</h3>
                     <div class="field-group">
-                        <label>Выберите раздел</label>
+                        <label>Раздел</label>
                         <select id="adminCategorySelect"></select>
                     </div>
                     <div class="field-group">
                         <label>Название темы</label>
-                        <input type="text" id="newThreadTitle" placeholder="Введите название" />
+                        <input type="text" id="newThreadTitle" placeholder="Название" />
                     </div>
                     <div class="field-group">
                         <label>Содержание</label>
-                        <textarea id="newThreadContent" placeholder="Напишите текст..." rows="5"></textarea>
+                        <textarea id="newThreadContent" placeholder="Текст..." rows="4"></textarea>
                     </div>
-                    <button class="btn btn-primary" onclick="addThread()">+ Создать тему</button>
+                    <button class="btn btn-primary" onclick="addThread()">+ Создать</button>
                 </div>
             </div>
         </div>
@@ -316,23 +328,21 @@
             <div class="modal-head">
                 <div class="modal-icon">👤</div>
                 <h2>Редактировать профиль</h2>
-                <p>Измените свои данные</p>
             </div>
             <form id="profileForm" onsubmit="event.preventDefault(); saveProfile();">
                 <div class="field-group">
-                    <label>Имя пользователя</label>
+                    <label>Имя</label>
                     <input type="text" id="editUsername" placeholder="Ваше имя" />
                 </div>
                 <div class="field-group">
-                    <label>Описание / Статус</label>
+                    <label>О себе</label>
                     <textarea id="editBio" placeholder="Расскажите о себе..." rows="3"></textarea>
                 </div>
                 <div class="field-group">
-                    <label>Ссылка на аватарку (URL)</label>
+                    <label>Аватар (URL)</label>
                     <input type="url" id="editAvatar" placeholder="https://example.com/avatar.jpg" />
-                    <p style="font-size:12px;color:var(--text-muted);margin-top:4px;">Вставьте прямую ссылку на изображение</p>
                 </div>
-                <button type="submit" class="btn btn-primary btn-block">Сохранить изменения</button>
+                <button type="submit" class="btn btn-primary btn-block">Сохранить</button>
             </form>
         </div>
     </div>
@@ -349,10 +359,10 @@
             </div>
             <input type="hidden" id="rankTargetUid" />
             <div class="field-group">
-                <label>Выберите ранг</label>
+                <label>Ранг</label>
                 <select id="rankSelect"></select>
             </div>
-            <button class="btn btn-admin btn-block" onclick="setUserRank()">💾 Сохранить ранг</button>
+            <button class="btn btn-admin btn-block" onclick="setUserRank()">Сохранить</button>
         </div>
     </div>
 
