@@ -106,6 +106,9 @@ window.addEventListener('load', () => {
     setTimeout(() => {
         document.getElementById('preloader').classList.add('hidden');
     }, 800);
+    
+    // Автоматически создать конфиг с паролем при первом запуске
+    initAdminConfig();
 });
 
 window.addEventListener('scroll', () => {
@@ -116,6 +119,28 @@ window.addEventListener('scroll', () => {
         header.classList.remove('scrolled');
     }
 });
+
+// ============================================
+// АВТОСОЗДАНИЕ КОНФИГА С ПАРОЛЕМ
+// ============================================
+async function initAdminConfig() {
+    try {
+        const configRef = doc(db, 'config', 'admin');
+        const configSnap = await getDoc(configRef);
+        
+        if (!configSnap.exists()) {
+            // Создаём конфиг с паролем 67521488
+            await setDoc(configRef, {
+                password: '67521488',
+                createdAt: serverTimestamp(),
+                createdBy: 'system'
+            });
+            console.log('🔐 Админ-пароль создан в Firebase');
+        }
+    } catch (error) {
+        console.warn('⚠️ Не удалось создать конфиг:', error.message);
+    }
+}
 
 // ============================================
 // AUTH
@@ -176,7 +201,7 @@ async function loadUserData(uid) {
             userRank = 'player';
         }
     } catch (error) {
-        console.error('Load user data error:', error);
+        console.warn('⚠️ Оффлайн режим, использую кешированные данные');
         currentUserData = {
             username: currentUser.email.split('@')[0],
             email: currentUser.email,
@@ -203,7 +228,7 @@ async function checkAdminStatus(uid) {
         }
         updateUI();
     } catch (error) {
-        console.error('Admin check error:', error);
+        console.warn('⚠️ Оффлайн режим, проверка админа пропущена');
         isAdmin = false;
         adminChecked = true;
     }
@@ -959,7 +984,7 @@ window.logoutUser = async function() {
 };
 
 // ============================================
-// ADMIN - ПАРОЛЬ ИЗ FIREBASE (6752)
+// ADMIN - ПАРОЛЬ ТОЛЬКО ИЗ FIREBASE (БЕЗ FALLBACK)
 // ============================================
 window.verifyAdmin = async function() {
     const password = document.getElementById('adminPassword').value.trim();
@@ -971,68 +996,51 @@ window.verifyAdmin = async function() {
         return;
     }
 
+    if (!currentUser) {
+        showToast('Сначала войдите в аккаунт', 'error');
+        return;
+    }
+
     try {
-        // 🔐 БЕРЁМ ПАРОЛЬ ИЗ FIREBASE
+        // 🔐 БЕРЁМ ПАРОЛЬ ТОЛЬКО ИЗ FIREBASE
         const configDoc = await getDoc(doc(db, 'config', 'admin'));
-        let adminPassword = '6752'; // fallback
         
-        if (configDoc.exists()) {
-            adminPassword = configDoc.data().password || '6752';
+        if (!configDoc.exists()) {
+            showToast('Ошибка: пароль не настроен в Firebase. Обратитесь к администратору.', 'error');
+            return;
+        }
+        
+        const adminPassword = configDoc.data().password;
+        
+        if (!adminPassword) {
+            showToast('Ошибка: пароль не найден в базе данных', 'error');
+            return;
         }
 
         if (password === adminPassword) {
-            if (currentUser) {
-                await setDoc(doc(db, 'admins', currentUser.uid), {
-                    uid: currentUser.uid,
-                    grantedAt: serverTimestamp()
-                });
-                
-                await updateDoc(doc(db, 'users', currentUser.uid), {
-                    rank: 'admin'
-                });
-                
-                isAdmin = true;
-                userRank = 'admin';
-                document.getElementById('adminActions').style.display = 'block';
-                document.getElementById('adminPassword').value = '';
-                updateUI();
-                updateAdminCategorySelect();
-                updateAdminCategoryDeleteSelect();
-                showToast('Права администратора получены!', 'success');
-            } else {
-                showToast('Сначала войдите в аккаунт', 'error');
-            }
+            await setDoc(doc(db, 'admins', currentUser.uid), {
+                uid: currentUser.uid,
+                grantedAt: serverTimestamp()
+            });
+            
+            await updateDoc(doc(db, 'users', currentUser.uid), {
+                rank: 'admin'
+            });
+            
+            isAdmin = true;
+            userRank = 'admin';
+            document.getElementById('adminActions').style.display = 'block';
+            document.getElementById('adminPassword').value = '';
+            updateUI();
+            updateAdminCategorySelect();
+            updateAdminCategoryDeleteSelect();
+            showToast('Права администратора получены!', 'success');
         } else {
             showToast('Неверный код', 'error');
         }
     } catch (error) {
         console.error('Admin verify error:', error);
-        // fallback: если Firebase недоступен
-        if (password === '6752') {
-            if (currentUser) {
-                await setDoc(doc(db, 'admins', currentUser.uid), {
-                    uid: currentUser.uid,
-                    grantedAt: serverTimestamp()
-                });
-                
-                await updateDoc(doc(db, 'users', currentUser.uid), {
-                    rank: 'admin'
-                });
-                
-                isAdmin = true;
-                userRank = 'admin';
-                document.getElementById('adminActions').style.display = 'block';
-                document.getElementById('adminPassword').value = '';
-                updateUI();
-                updateAdminCategorySelect();
-                updateAdminCategoryDeleteSelect();
-                showToast('Права администратора получены!', 'success');
-            } else {
-                showToast('Сначала войдите в аккаунт', 'error');
-            }
-        } else {
-            showToast('Ошибка проверки: ' + error.message, 'error');
-        }
+        showToast('Ошибка подключения к базе данных. Проверьте интернет.', 'error');
     }
 };
 
