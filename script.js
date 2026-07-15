@@ -121,6 +121,7 @@ window.addEventListener('scroll', () => {
 // AUTH
 // ============================================
 onAuthStateChanged(auth, async (user) => {
+    const usersListBtn = document.getElementById('usersListBtn');
     if (user) {
         currentUser = user;
         await loadUserData(user.uid);
@@ -129,6 +130,7 @@ onAuthStateChanged(auth, async (user) => {
         loadStats();
         renderCategories();
         updateAdminCategoryDeleteSelect();
+        if (usersListBtn) usersListBtn.style.display = 'inline-flex';
     } else {
         currentUser = null;
         currentUserData = null;
@@ -137,6 +139,7 @@ onAuthStateChanged(auth, async (user) => {
         adminChecked = false;
         updateUI();
         renderCategories();
+        if (usersListBtn) usersListBtn.style.display = 'none';
     }
 });
 
@@ -266,6 +269,7 @@ window.openProfile = async function(e, userId = null) {
     forumView.style.display = 'none';
     document.getElementById('pageView').style.display = 'none';
     profileView.style.display = 'block';
+    document.getElementById('usersView').style.display = 'none';
     
     try {
         const userDoc = await getDoc(doc(db, 'users', targetUid));
@@ -286,6 +290,12 @@ window.openProfile = async function(e, userId = null) {
         const followers = data.followers || [];
         const following = data.following || [];
         const isFollowing = followers.includes(currentUser.uid);
+
+        // Обновляем URL
+        if (username) {
+            const newUrl = `/${encodeURIComponent(username)}`;
+            window.history.pushState({ username: username }, '', newUrl);
+        }
 
         const postsQuery = query(
             collection(db, 'profile_posts'),
@@ -493,6 +503,7 @@ window.closeProfile = function() {
     document.getElementById('profileView').style.display = 'none';
     document.getElementById('forumView').style.display = 'block';
     renderCategories();
+    window.history.pushState({}, '', '/');
 };
 
 // ============================================
@@ -692,6 +703,159 @@ function updateAdminCategoryDeleteSelect() {
 }
 
 // ============================================
+// СПИСОК ПОЛЬЗОВАТЕЛЕЙ
+// ============================================
+window.showUsersList = async function() {
+    const forumView = document.getElementById('forumView');
+    const usersView = document.getElementById('usersView');
+    const container = document.getElementById('usersContainer');
+    
+    forumView.style.display = 'none';
+    usersView.style.display = 'block';
+    document.getElementById('profileView').style.display = 'none';
+    document.getElementById('pageView').style.display = 'none';
+    container.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Загрузка пользователей...</p></div>';
+
+    try {
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        let users = [];
+        usersSnapshot.forEach(doc => {
+            users.push({ id: doc.id, ...doc.data() });
+        });
+
+        users.sort((a, b) => {
+            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+            return dateB - dateA;
+        });
+
+        let html = `
+            <div class="users-grid">
+                <div class="users-header">
+                    <h2>👥 Все пользователи (${users.length})</h2>
+                    <input type="text" id="userSearchInput" placeholder="Поиск по нику..." oninput="filterUsers()" style="max-width:300px;padding:8px 14px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);">
+                </div>
+                <div id="usersListContainer">
+        `;
+
+        if (users.length === 0) {
+            html += `<div class="empty-state"><span class="empty-icon">👤</span><p>Нет пользователей</p></div>`;
+        } else {
+            users.forEach(user => {
+                const rankIcon = getRankIcon(user.rank || 'player');
+                const rankName = getRankName(user.rank || 'player');
+                const avatarUrl = user.avatar || '';
+                const username = user.username || 'Неизвестно';
+                
+                html += `
+                    <div class="user-card" data-username="${username.toLowerCase()}" onclick="openProfileByUsername('${username}')">
+                        <div class="user-card-avatar">
+                            ${avatarUrl ? 
+                                `<img src="${avatarUrl}" alt="Avatar" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />` : 
+                                ''
+                            }
+                            <span class="user-card-avatar-letter" ${avatarUrl ? 'style="display:none;"' : ''}>${username[0].toUpperCase()}</span>
+                        </div>
+                        <div class="user-card-info">
+                            <div class="user-card-name">${username}</div>
+                            <div class="user-card-rank">${rankIcon} ${rankName}</div>
+                            <div class="user-card-meta">📅 ${formatDate(user.createdAt)}</div>
+                        </div>
+                        <div class="user-card-actions">
+                            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openProfileByUsername('${username}')">👤 Открыть</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        html += `</div></div>`;
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Users list error:', error);
+        container.innerHTML = `<div class="empty-state"><span class="empty-icon">⚠️</span><p>Ошибка загрузки пользователей</p></div>`;
+    }
+};
+
+window.filterUsers = function() {
+    const input = document.getElementById('userSearchInput');
+    if (!input) return;
+    const query = input.value.toLowerCase().trim();
+    const cards = document.querySelectorAll('.user-card');
+    
+    cards.forEach(card => {
+        const username = card.dataset.username || '';
+        if (username.includes(query)) {
+            card.style.display = 'flex';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+};
+
+window.openProfileByUsername = async function(username) {
+    if (!username) {
+        showToast('Введите ник', 'error');
+        return;
+    }
+
+    try {
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        let foundUser = null;
+        usersSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.username && data.username.toLowerCase() === username.toLowerCase()) {
+                foundUser = { id: doc.id, ...data };
+            }
+        });
+
+        if (foundUser) {
+            document.getElementById('usersView').style.display = 'none';
+            document.getElementById('forumView').style.display = 'none';
+            openProfile(null, foundUser.id);
+        } else {
+            showToast(`Пользователь "${username}" не найден`, 'error');
+        }
+    } catch (error) {
+        showToast('Ошибка поиска: ' + error.message, 'error');
+    }
+};
+
+// ============================================
+// МАРШРУТИЗАЦИЯ ПО НИКУ
+// ============================================
+function handleRoute() {
+    const path = window.location.pathname;
+    if (path && path !== '/') {
+        const username = decodeURIComponent(path.substring(1));
+        if (username) {
+            setTimeout(() => {
+                if (currentUser) {
+                    openProfileByUsername(username);
+                } else {
+                    const checkAuth = setInterval(() => {
+                        if (currentUser) {
+                            clearInterval(checkAuth);
+                            openProfileByUsername(username);
+                        }
+                    }, 500);
+                }
+            }, 1000);
+        }
+    }
+}
+
+window.addEventListener('popstate', (event) => {
+    if (event.state && event.state.username) {
+        openProfileByUsername(event.state.username);
+    } else {
+        document.getElementById('profileView').style.display = 'none';
+        document.getElementById('forumView').style.display = 'block';
+        renderCategories();
+    }
+});
+
+// ============================================
 // AUTH
 // ============================================
 window.registerUser = async function() {
@@ -839,7 +1003,6 @@ window.verifyAdmin = async function() {
     }
 };
 
-// Автоматическое открытие панели
 document.addEventListener('DOMContentLoaded', () => {
     const adminModal = document.getElementById('adminModal');
     const observer = new MutationObserver(() => {
@@ -1013,11 +1176,11 @@ function updateUI() {
         }
         
         userInfo.style.display = 'flex';
-        adminBadge.style.display = isAdmin ? 'inline' : 'none';
+        adminBadge.style.display = (userRank === 'admin' || userRank === 'owner') ? 'inline' : 'none';
         loginBtn.style.display = 'none';
         registerBtn.style.display = 'none';
         logoutBtn.style.display = 'inline-flex';
-        adminPanelBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+        adminPanelBtn.style.display = (isAdmin || userRank === 'admin' || userRank === 'owner') ? 'inline-flex' : 'none';
     } else {
         userInfo.style.display = 'none';
         loginBtn.style.display = 'inline-flex';
@@ -1139,6 +1302,8 @@ window.openThread = async function(threadId) {
 
     categoriesView.style.display = 'none';
     threadView.style.display = 'block';
+    document.getElementById('profileView').style.display = 'none';
+    document.getElementById('usersView').style.display = 'none';
     container.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Загрузка...</p></div>';
 
     try {
@@ -1303,6 +1468,10 @@ window.addPost = async function(threadId) {
 window.showCategoriesView = function() {
     document.getElementById('threadView').style.display = 'none';
     document.getElementById('categoriesView').style.display = 'block';
+    document.getElementById('usersView').style.display = 'none';
+    document.getElementById('profileView').style.display = 'none';
+    document.getElementById('pageView').style.display = 'none';
+    window.history.pushState({}, '', '/');
     renderCategories();
 };
 
@@ -1434,6 +1603,8 @@ window.showPage = function(page) {
     
     forumView.style.display = 'none';
     pageView.style.display = 'block';
+    document.getElementById('profileView').style.display = 'none';
+    document.getElementById('usersView').style.display = 'none';
     
     const pages = {
         rules: {
@@ -1527,8 +1698,11 @@ try {
                 document.getElementById('pageView').style.display === 'none') {
                 if (!document.getElementById('profileView').style.display || 
                     document.getElementById('profileView').style.display === 'none') {
-                    renderCategories();
-                    updateAdminCategoryDeleteSelect();
+                    if (!document.getElementById('usersView').style.display || 
+                        document.getElementById('usersView').style.display === 'none') {
+                        renderCategories();
+                        updateAdminCategoryDeleteSelect();
+                    }
                 }
             }
         }
@@ -1543,7 +1717,10 @@ try {
                 document.getElementById('pageView').style.display === 'none') {
                 if (!document.getElementById('profileView').style.display || 
                     document.getElementById('profileView').style.display === 'none') {
-                    renderCategories();
+                    if (!document.getElementById('usersView').style.display || 
+                        document.getElementById('usersView').style.display === 'none') {
+                        renderCategories();
+                    }
                 }
             }
         }
@@ -1565,6 +1742,13 @@ window.refreshForum = function() {
     renderCategories();
     updateAdminCategoryDeleteSelect();
 };
+
+// ============================================
+// МАРШРУТИЗАЦИЯ
+// ============================================
+window.addEventListener('load', () => {
+    setTimeout(handleRoute, 1500);
+});
 
 console.log('🚀 Forum Sell loaded!');
 setTimeout(() => { 
