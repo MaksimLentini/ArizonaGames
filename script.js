@@ -37,6 +37,65 @@ let adminChecked = false;
 let foundUserForAdmin = null;
 
 // ============================================
+// 🛡️ ЗАЩИТА: САНИТАЙЗЕР ВВОДА
+// ============================================
+function sanitizeInput(input) {
+    if (!input) return '';
+    // Преобразуем строку в безопасный вид
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;',
+        "/": '&#x2F;',
+        '`': '&#x60;',
+        '=': '&#x3D;'
+    };
+    return String(input).replace(/[&<>"'`=\/]/g, function(s) {
+        return map[s];
+    });
+}
+
+// ============================================
+// 🛡️ ЗАЩИТА: ПРОВЕРКА ДЛИНЫ
+// ============================================
+function validateLength(input, min = 1, max = 1000) {
+    if (!input) return false;
+    const len = String(input).length;
+    return len >= min && len <= max;
+}
+
+// ============================================
+// 🛡️ ЗАЩИТА: ПРОВЕРКА ИМЕНИ ПОЛЬЗОВАТЕЛЯ
+// ============================================
+function validateUsername(username) {
+    if (!username) return false;
+    // Только латиница, цифры, подчеркивание, дефис, точка (3-20 символов)
+    const regex = /^[a-zA-Z0-9_.-]{3,20}$/;
+    return regex.test(username);
+}
+
+// ============================================
+// 🛡️ ЗАЩИТА: ОГРАНИЧЕНИЕ ЗАПРОСОВ (RATE LIMIT)
+// ============================================
+const rateLimits = {};
+
+function checkRateLimit(key, limit = 5, window = 60000) {
+    const now = Date.now();
+    if (!rateLimits[key]) {
+        rateLimits[key] = [];
+    }
+    // Удаляем старые записи
+    rateLimits[key] = rateLimits[key].filter(t => now - t < window);
+    if (rateLimits[key].length >= limit) {
+        return false;
+    }
+    rateLimits[key].push(now);
+    return true;
+}
+
+// ============================================
 // РАНГИ
 // ============================================
 const RANKS = {
@@ -107,8 +166,26 @@ window.addEventListener('load', () => {
         document.getElementById('preloader').classList.add('hidden');
     }, 800);
     
-    // Автоматически создать конфиг с паролем при первом запуске
     initAdminConfig();
+    startRealtimeListeners();
+    
+    // 🛡️ ЗАЩИТА: блокировка правой кнопки мыши (защита от копирования)
+    document.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        return false;
+    });
+    
+    // 🛡️ ЗАЩИТА: блокировка клавиш (F12, Ctrl+Shift+I, Ctrl+U)
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'F12' || 
+            (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+            (e.ctrlKey && e.key === 'U') ||
+            (e.ctrlKey && e.shiftKey && e.key === 'J')) {
+            e.preventDefault();
+            showToast('🔒 Доступ к инструментам разработчика ограничен', 'warning');
+            return false;
+        }
+    });
 });
 
 window.addEventListener('scroll', () => {
@@ -121,7 +198,7 @@ window.addEventListener('scroll', () => {
 });
 
 // ============================================
-// АВТОСОЗДАНИЕ КОНФИГА С ПАРОЛЕМ
+// АВТОСОЗДАНИЕ КОНФИГА
 // ============================================
 async function initAdminConfig() {
     try {
@@ -129,7 +206,6 @@ async function initAdminConfig() {
         const configSnap = await getDoc(configRef);
         
         if (!configSnap.exists()) {
-            // Создаём конфиг с паролем 67521488
             await setDoc(configRef, {
                 password: '67521488',
                 createdAt: serverTimestamp(),
@@ -143,6 +219,57 @@ async function initAdminConfig() {
 }
 
 // ============================================
+// 🌟 РЕАЛЬНОЕ ВРЕМЯ — ПОДПИСКИ
+// ============================================
+let unsubscribeCategories = null;
+let unsubscribeThreads = null;
+let unsubscribePosts = null;
+
+function startRealtimeListeners() {
+    if (unsubscribeCategories) unsubscribeCategories();
+    if (unsubscribeThreads) unsubscribeThreads();
+    if (unsubscribePosts) unsubscribePosts();
+
+    unsubscribeCategories = onSnapshot(
+        collection(db, 'categories'),
+        () => {
+            if (!document.getElementById('threadView').style.display || 
+                document.getElementById('threadView').style.display === 'none') {
+                renderCategories();
+            }
+        },
+        (error) => {
+            console.warn('⚠️ Ошибка слушателя категорий:', error.message);
+        }
+    );
+
+    unsubscribeThreads = onSnapshot(
+        collection(db, 'threads'),
+        () => {
+            if (!document.getElementById('threadView').style.display || 
+                document.getElementById('threadView').style.display === 'none') {
+                renderCategories();
+            }
+        },
+        (error) => {
+            console.warn('⚠️ Ошибка слушателя тем:', error.message);
+        }
+    );
+
+    unsubscribePosts = onSnapshot(
+        collection(db, 'posts'),
+        () => {
+            if (document.getElementById('threadView').style.display !== 'none' && currentThreadId) {
+                openThread(currentThreadId);
+            }
+        },
+        (error) => {
+            console.warn('⚠️ Ошибка слушателя постов:', error.message);
+        }
+    );
+}
+
+// ============================================
 // AUTH
 // ============================================
 onAuthStateChanged(auth, async (user) => {
@@ -153,8 +280,6 @@ onAuthStateChanged(auth, async (user) => {
         await checkAdminStatus(user.uid);
         updateUI();
         loadStats();
-        renderCategories();
-        updateAdminCategoryDeleteSelect();
         if (usersListBtn) usersListBtn.style.display = 'inline-flex';
     } else {
         currentUser = null;
@@ -163,7 +288,6 @@ onAuthStateChanged(auth, async (user) => {
         userRank = 'player';
         adminChecked = false;
         updateUI();
-        renderCategories();
         if (usersListBtn) usersListBtn.style.display = 'none';
     }
 });
@@ -244,6 +368,12 @@ window.toggleFollow = async function(targetUid) {
     }
     if (targetUid === currentUser.uid) {
         showToast('Нельзя подписаться на себя', 'warning');
+        return;
+    }
+
+    // 🛡️ ЗАЩИТА: rate limit
+    if (!checkRateLimit(`follow_${currentUser.uid}`, 10, 60000)) {
+        showToast('⏳ Слишком много запросов. Подождите минуту.', 'error');
         return;
     }
 
@@ -351,12 +481,12 @@ window.openProfile = async function(e, userId = null) {
                         <div class="profile-post-item">
                             <div class="profile-post-head">
                                 <div class="profile-post-author">
-                                    <span class="profile-post-author-name">${post.fromName}</span>
+                                    <span class="profile-post-author-name">${sanitizeInput(post.fromName)}</span>
                                     <span class="profile-post-rank">${getRankName(post.fromRank || 'player')}</span>
                                 </div>
                                 <span class="profile-post-date">${formatDate(post.createdAt)}</span>
                             </div>
-                            <div class="profile-post-content">${post.content}</div>
+                            <div class="profile-post-content">${sanitizeInput(post.content)}</div>
                         </div>
                     `).join('')
                 }
@@ -398,9 +528,9 @@ window.openProfile = async function(e, userId = null) {
                         ` : ''}
                     </div>
                     <div class="profile-info">
-                        <h1 class="profile-name">${username}</h1>
+                        <h1 class="profile-name">${sanitizeInput(username)}</h1>
                         <div class="profile-rank">${rankIcon} ${rankDisplay}</div>
-                        <div class="profile-bio">${bio}</div>
+                        <div class="profile-bio">${sanitizeInput(bio)}</div>
                         <div class="profile-meta">
                             <span>📅 Присоединился: ${createdAt}</span>
                             ${isAdminUser ? '<span class="role-badge">Администратор</span>' : ''}
@@ -440,6 +570,17 @@ window.openProfile = async function(e, userId = null) {
 // ДОБАВЛЕНИЕ ЗАПИСИ В ПРОФИЛЬ
 // ============================================
 window.addProfilePost = async function(toUid) {
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
+        return;
+    }
+
+    // 🛡️ ЗАЩИТА: rate limit
+    if (!checkRateLimit(`profile_post_${currentUser.uid}`, 3, 30000)) {
+        showToast('⏳ Слишком много записей. Подождите 30 секунд.', 'error');
+        return;
+    }
+
     const input = document.getElementById('profilePostInput');
     const content = input.value.trim();
     
@@ -447,11 +588,15 @@ window.addProfilePost = async function(toUid) {
         showToast('Введите текст записи', 'error');
         return;
     }
-    
-    if (!currentUser) {
-        showToast('Войдите в аккаунт', 'error');
+
+    // 🛡️ ЗАЩИТА: проверка длины
+    if (!validateLength(content, 1, 500)) {
+        showToast('Текст должен быть от 1 до 500 символов', 'error');
         return;
     }
+
+    // 🛡️ ЗАЩИТА: санитайзинг
+    const safeContent = sanitizeInput(content);
 
     try {
         await addDoc(collection(db, 'profile_posts'), {
@@ -459,7 +604,7 @@ window.addProfilePost = async function(toUid) {
             fromUid: currentUser.uid,
             fromName: currentUserData?.username || currentUser.email,
             fromRank: currentUserData?.rank || 'player',
-            content: content,
+            content: safeContent,
             createdAt: serverTimestamp()
         });
         
@@ -505,12 +650,35 @@ window.saveProfile = async function() {
         showToast('Введите имя пользователя', 'error');
         return;
     }
-    
+
+    // 🛡️ ЗАЩИТА: валидация имени
+    if (!validateUsername(username)) {
+        showToast('Имя должно содержать 3-20 символов (a-z, A-Z, 0-9, _, -, .)', 'error');
+        return;
+    }
+
+    // 🛡️ ЗАЩИТА: проверка длины био
+    if (!validateLength(bio, 0, 500)) {
+        showToast('Описание не должно превышать 500 символов', 'error');
+        return;
+    }
+
+    // 🛡️ ЗАЩИТА: проверка URL аватара
+    if (avatar && !avatar.startsWith('https://')) {
+        showToast('Ссылка должна начинаться с https://', 'error');
+        return;
+    }
+
+    // 🛡️ ЗАЩИТА: санитайзинг
+    const safeUsername = sanitizeInput(username);
+    const safeBio = sanitizeInput(bio);
+    const safeAvatar = sanitizeInput(avatar);
+
     try {
         await updateDoc(doc(db, 'users', currentUser.uid), {
-            username: username,
-            bio: bio || 'Пользователь пока ничего не рассказал о себе',
-            avatar: avatar || '',
+            username: safeUsername,
+            bio: safeBio || 'Пользователь пока ничего не рассказал о себе',
+            avatar: safeAvatar || '',
             updatedAt: serverTimestamp()
         });
         
@@ -588,9 +756,26 @@ window.setUserRank = async function() {
 // ВЫДАЧА ПРАВ ПО НИКУ
 // ============================================
 window.searchUserForAdmin = async function() {
+    if (!isAdmin) {
+        showToast('Требуются права администратора', 'error');
+        return;
+    }
+
+    // 🛡️ ЗАЩИТА: rate limit
+    if (!checkRateLimit(`search_user_${currentUser.uid}`, 5, 30000)) {
+        showToast('⏳ Слишком много поисков. Подождите 30 секунд.', 'error');
+        return;
+    }
+
     const username = document.getElementById('adminUserSearch').value.trim();
     if (!username) {
         showToast('Введите ник пользователя', 'error');
+        return;
+    }
+
+    // 🛡️ ЗАЩИТА: валидация имени
+    if (!validateUsername(username)) {
+        showToast('Некорректное имя пользователя', 'error');
         return;
     }
 
@@ -611,7 +796,7 @@ window.searchUserForAdmin = async function() {
             foundUserForAdmin = found;
             const currentRank = found.rank || 'player';
             nameSpan.innerHTML = `
-                <strong>${found.username}</strong> 
+                <strong>${sanitizeInput(found.username)}</strong> 
                 (текущий ранг: ${getRankName(currentRank)})
                 ${found.id === currentUser.uid ? ' <span style="color:var(--warning);">(это вы)</span>' : ''}
             `;
@@ -626,7 +811,7 @@ window.searchUserForAdmin = async function() {
             }
         } else {
             foundUserForAdmin = null;
-            nameSpan.textContent = `❌ Пользователь "${username}" не найден`;
+            nameSpan.textContent = `❌ Пользователь "${sanitizeInput(username)}" не найден`;
             resultDiv.style.display = 'flex';
             const grantBtn = resultDiv.querySelector('.btn-success');
             if (grantBtn) grantBtn.style.display = 'none';
@@ -663,7 +848,7 @@ window.grantAdmin = async function() {
             rank: 'admin'
         });
 
-        showToast(`✅ Пользователь ${foundUserForAdmin.username} теперь администратор!`, 'success');
+        showToast(`✅ Пользователь ${sanitizeInput(foundUserForAdmin.username)} теперь администратор!`, 'success');
         
         document.getElementById('userSearchResult').style.display = 'none';
         document.getElementById('adminUserSearch').value = '';
@@ -781,7 +966,7 @@ window.showUsersList = async function() {
                             <span class="user-card-avatar-letter" ${avatarUrl ? 'style="display:none;"' : ''}>${username[0].toUpperCase()}</span>
                         </div>
                         <div class="user-card-info">
-                            <div class="user-card-name">${username}</div>
+                            <div class="user-card-name">${sanitizeInput(username)}</div>
                             <div class="user-card-rank">${rankIcon} ${rankName}</div>
                             <div class="user-card-meta">📅 ${formatDate(user.createdAt)}</div>
                         </div>
@@ -823,6 +1008,12 @@ window.openProfileByUsername = async function(username) {
         return;
     }
 
+    // 🛡️ ЗАЩИТА: валидация имени
+    if (!validateUsername(username)) {
+        showToast('Некорректное имя пользователя', 'error');
+        return;
+    }
+
     try {
         const usersSnapshot = await getDocs(collection(db, 'users'));
         let foundUser = null;
@@ -838,7 +1029,7 @@ window.openProfileByUsername = async function(username) {
             document.getElementById('forumView').style.display = 'none';
             openProfile(null, foundUser.id);
         } else {
-            showToast(`Пользователь "${username}" не найден`, 'error');
+            showToast(`Пользователь "${sanitizeInput(username)}" не найден`, 'error');
         }
     } catch (error) {
         showToast('Ошибка поиска: ' + error.message, 'error');
@@ -880,7 +1071,7 @@ window.addEventListener('popstate', (event) => {
 });
 
 // ============================================
-// AUTH
+// AUTH С ЗАЩИТОЙ
 // ============================================
 window.registerUser = async function() {
     const username = document.getElementById('regUsername').value.trim();
@@ -893,13 +1084,22 @@ window.registerUser = async function() {
         return;
     }
 
-    if (username.length < 3) {
-        showToast('Имя пользователя должно быть минимум 3 символа', 'error');
+    // 🛡️ ЗАЩИТА: валидация имени
+    if (!validateUsername(username)) {
+        showToast('Имя должно содержать 3-20 символов (a-z, A-Z, 0-9, _, -, .)', 'error');
         return;
     }
 
+    // 🛡️ ЗАЩИТА: проверка пароля
     if (password.length < 6) {
         showToast('Пароль должен быть минимум 6 символов', 'error');
+        return;
+    }
+
+    // 🛡️ ЗАЩИТА: сложность пароля
+    const passwordStrength = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+    if (!passwordStrength.test(password)) {
+        showToast('Пароль должен содержать заглавные, строчные буквы и цифры', 'error');
         return;
     }
 
@@ -908,13 +1108,22 @@ window.registerUser = async function() {
         return;
     }
 
+    // 🛡️ ЗАЩИТА: rate limit
+    if (!checkRateLimit(`register_${email}`, 3, 60000)) {
+        showToast('⏳ Слишком много попыток регистрации. Подождите минуту.', 'error');
+        return;
+    }
+
+    const safeUsername = sanitizeInput(username);
+    const safeEmail = sanitizeInput(email);
+
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, safeEmail, password);
         const user = userCredential.user;
 
         await setDoc(doc(db, 'users', user.uid), {
-            username: username,
-            email: email,
+            username: safeUsername,
+            email: safeEmail,
             bio: 'Новый игрок',
             avatar: '',
             rank: 'player',
@@ -956,8 +1165,16 @@ window.loginUser = async function() {
         return;
     }
 
+    // 🛡️ ЗАЩИТА: rate limit
+    if (!checkRateLimit(`login_${email}`, 5, 60000)) {
+        showToast('⏳ Слишком много попыток входа. Подождите минуту.', 'error');
+        return;
+    }
+
+    const safeEmail = sanitizeInput(email);
+
     try {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, safeEmail, password);
         closeModal('loginModal');
         document.getElementById('loginEmail').value = '';
         document.getElementById('loginPassword').value = '';
@@ -984,7 +1201,7 @@ window.logoutUser = async function() {
 };
 
 // ============================================
-// ADMIN - ПАРОЛЬ ТОЛЬКО ИЗ FIREBASE (БЕЗ FALLBACK)
+// ADMIN - ПАРОЛЬ ТОЛЬКО ИЗ FIREBASE
 // ============================================
 window.verifyAdmin = async function() {
     const password = document.getElementById('adminPassword').value.trim();
@@ -1001,8 +1218,13 @@ window.verifyAdmin = async function() {
         return;
     }
 
+    // 🛡️ ЗАЩИТА: rate limit
+    if (!checkRateLimit(`admin_${currentUser.uid}`, 3, 30000)) {
+        showToast('⏳ Слишком много попыток. Подождите 30 секунд.', 'error');
+        return;
+    }
+
     try {
-        // 🔐 БЕРЁМ ПАРОЛЬ ТОЛЬКО ИЗ FIREBASE
         const configDoc = await getDoc(doc(db, 'config', 'admin'));
         
         if (!configDoc.exists()) {
@@ -1071,10 +1293,20 @@ window.addCategory = async function() {
         return;
     }
 
+    // 🛡️ ЗАЩИТА: проверка длины
+    if (!validateLength(name, 1, 50)) {
+        showToast('Название должно быть от 1 до 50 символов', 'error');
+        return;
+    }
+
+    // 🛡️ ЗАЩИТА: санитайзинг
+    const safeName = sanitizeInput(name);
+    const safeDescription = sanitizeInput(description || '');
+
     try {
         await addDoc(collection(db, 'categories'), {
-            name: name,
-            description: description || 'Описание отсутствует',
+            name: safeName,
+            description: safeDescription || 'Описание отсутствует',
             createdAt: serverTimestamp(),
             createdBy: currentUser ? currentUser.uid : 'anonymous'
         });
@@ -1099,6 +1331,12 @@ window.addThread = async function() {
         return;
     }
 
+    // 🛡️ ЗАЩИТА: rate limit
+    if (!checkRateLimit(`thread_${currentUser.uid}`, 5, 30000)) {
+        showToast('⏳ Слишком много тем. Подождите 30 секунд.', 'error');
+        return;
+    }
+
     const categoryId = document.getElementById('adminCategorySelect').value;
     const title = document.getElementById('newThreadTitle').value.trim();
     const content = document.getElementById('newThreadContent').value.trim();
@@ -1108,11 +1346,25 @@ window.addThread = async function() {
         return;
     }
 
+    // 🛡️ ЗАЩИТА: проверка длины
+    if (!validateLength(title, 1, 100)) {
+        showToast('Название должно быть от 1 до 100 символов', 'error');
+        return;
+    }
+    if (!validateLength(content, 1, 10000)) {
+        showToast('Содержание должно быть от 1 до 10000 символов', 'error');
+        return;
+    }
+
+    // 🛡️ ЗАЩИТА: санитайзинг
+    const safeTitle = sanitizeInput(title);
+    const safeContent = sanitizeInput(content);
+
     try {
         await addDoc(collection(db, 'threads'), {
             categoryId: categoryId,
-            title: title,
-            content: content,
+            title: safeTitle,
+            content: safeContent,
             author: currentUserData?.username || currentUser.email,
             authorId: currentUser.uid,
             authorRank: userRank,
@@ -1265,10 +1517,10 @@ async function renderCategories() {
             html += `
                 <div class="forum-category">
                     <div class="category-header">
-                        <h4>${category.name}</h4>
+                        <h4>${sanitizeInput(category.name)}</h4>
                         <span class="category-meta">${categoryThreads.length}</span>
                     </div>
-                    <div class="category-desc">${category.description || ''}</div>
+                    <div class="category-desc">${sanitizeInput(category.description || '')}</div>
                     ${categoryThreads.length === 0 ? 
                         `<div class="empty-state" style="padding:12px 0;font-size:13px;">Нет тем</div>` :
                         `<ul class="topic-list">
@@ -1277,9 +1529,9 @@ async function renderCategories() {
                                 return `
                                     <li class="topic-item ${isClosed ? 'topic-closed' : ''}" onclick="openThread('${thread.id}')">
                                         <div class="topic-info">
-                                            <h5>${isClosed ? '🔒 ' : ''}${thread.title}</h5>
+                                            <h5>${isClosed ? '🔒 ' : ''}${sanitizeInput(thread.title)}</h5>
                                             <div class="topic-meta">
-                                                <span>${getRankIcon(thread.authorRank || 'player')} ${thread.author}</span>
+                                                <span>${getRankIcon(thread.authorRank || 'player')} ${sanitizeInput(thread.author)}</span>
                                                 <span>${getRankName(thread.authorRank || 'player')}</span>
                                                 <span>📅 ${formatDate(thread.createdAt)}</span>
                                                 <span>👁 ${thread.views || 0}</span>
@@ -1375,9 +1627,9 @@ window.openThread = async function(threadId) {
         container.innerHTML = `
             <div class="thread-detail ${isClosed ? 'thread-closed' : ''}">
                 <div class="thread-header">
-                    <h2>${isClosed ? '🔒 ' : ''}${thread.title || 'Без названия'}</h2>
+                    <h2>${isClosed ? '🔒 ' : ''}${sanitizeInput(thread.title || 'Без названия')}</h2>
                     <div class="thread-meta">
-                        <span>${getRankIcon(thread.authorRank || 'player')} ${thread.author || 'Неизвестен'}</span>
+                        <span>${getRankIcon(thread.authorRank || 'player')} ${sanitizeInput(thread.author || 'Неизвестен')}</span>
                         <span>${getRankName(thread.authorRank || 'player')}</span>
                         <span>📅 ${formatDate(thread.createdAt)}</span>
                         <span>👁 ${(thread.views || 0) + 1}</span>
@@ -1385,7 +1637,7 @@ window.openThread = async function(threadId) {
                         ${isClosed ? '<span style="color:var(--danger);font-weight:700;">🔒 Закрыта</span>' : ''}
                     </div>
                 </div>
-                <div class="thread-body">${thread.content || ''}</div>
+                <div class="thread-body">${sanitizeInput(thread.content || '')}</div>
                 <div class="thread-admin-actions">
                     <button class="btn btn-outline btn-sm" onclick="openProfile(event, '${thread.authorId}')">👤</button>
                     ${isAdmin ? `
@@ -1408,7 +1660,7 @@ window.openThread = async function(threadId) {
                         <div class="post-item">
                             <div class="post-head">
                                 <div class="post-author-info">
-                                    <span class="post-author">${getRankIcon(post.authorRank || 'player')} ${post.author || 'Неизвестен'}</span>
+                                    <span class="post-author">${getRankIcon(post.authorRank || 'player')} ${sanitizeInput(post.author || 'Неизвестен')}</span>
                                     <span class="post-rank">${getRankName(post.authorRank || 'player')}</span>
                                 </div>
                                 <div class="post-actions">
@@ -1416,7 +1668,7 @@ window.openThread = async function(threadId) {
                                     <span class="post-date">${formatDate(post.createdAt)}</span>
                                 </div>
                             </div>
-                            <div class="post-content">${post.content || ''}</div>
+                            <div class="post-content">${sanitizeInput(post.content || '')}</div>
                         </div>
                     `).join('')
                 }
@@ -1464,13 +1716,28 @@ window.addPost = async function(threadId) {
         return;
     }
 
+    // 🛡️ ЗАЩИТА: rate limit
+    if (!checkRateLimit(`post_${currentUser.uid}`, 10, 60000)) {
+        showToast('⏳ Слишком много сообщений. Подождите минуту.', 'error');
+        return;
+    }
+
+    // 🛡️ ЗАЩИТА: проверка длины
+    if (!validateLength(content, 1, 5000)) {
+        showToast('Текст должен быть от 1 до 5000 символов', 'error');
+        return;
+    }
+
+    // 🛡️ ЗАЩИТА: санитайзинг
+    const safeContent = sanitizeInput(content);
+
     try {
         await addDoc(collection(db, 'posts'), {
             threadId: threadId,
             author: currentUserData?.username || currentUser.email,
             authorId: currentUser.uid,
             authorRank: userRank,
-            content: content,
+            content: safeContent,
             createdAt: serverTimestamp()
         });
 
