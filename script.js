@@ -291,7 +291,6 @@ window.openProfile = async function(e, userId = null) {
         const following = data.following || [];
         const isFollowing = followers.includes(currentUser.uid);
 
-        // Обновляем URL
         if (username) {
             const newUrl = `/${encodeURIComponent(username)}`;
             window.history.pushState({ username: username }, '', newUrl);
@@ -1014,7 +1013,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================
-// CATEGORIES
+// CATEGORIES (только для админов)
 // ============================================
 window.addCategory = async function() {
     if (!isAdmin) {
@@ -1050,7 +1049,7 @@ window.addCategory = async function() {
 };
 
 // ============================================
-// THREADS
+// THREADS (ВСЕ АВТОРИЗОВАННЫЕ МОГУТ СОЗДАВАТЬ)
 // ============================================
 window.addThread = async function() {
     if (!currentUser) {
@@ -1058,10 +1057,7 @@ window.addThread = async function() {
         return;
     }
     
-    if (!hasPermission('create_threads')) {
-        showToast('У вас нет прав на создание тем', 'error');
-        return;
-    }
+    // ✅ УБРАЛ ПРОВЕРКУ ПРАВ — теперь все авторизованные могут создавать темы
 
     const categoryId = document.getElementById('adminCategorySelect').value;
     const title = document.getElementById('newThreadTitle').value.trim();
@@ -1176,11 +1172,12 @@ function updateUI() {
         }
         
         userInfo.style.display = 'flex';
+        // ✅ Admin бейдж ТОЛЬКО для owner и admin
         adminBadge.style.display = (userRank === 'admin' || userRank === 'owner') ? 'inline' : 'none';
         loginBtn.style.display = 'none';
         registerBtn.style.display = 'none';
         logoutBtn.style.display = 'inline-flex';
-        adminPanelBtn.style.display = (isAdmin || userRank === 'admin' || userRank === 'owner') ? 'inline-flex' : 'none';
+        adminPanelBtn.style.display = (userRank === 'admin' || userRank === 'owner') ? 'inline-flex' : 'none';
     } else {
         userInfo.style.display = 'none';
         loginBtn.style.display = 'inline-flex';
