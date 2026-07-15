@@ -37,69 +37,6 @@ let adminChecked = false;
 let foundUserForAdmin = null;
 
 // ============================================
-// РАНГИ
-// ============================================
-const RANKS = {
-    owner: {
-        id: 'owner',
-        name: 'Владелец',
-        icon: '👑',
-        level: 5,
-        permissions: ['all']
-    },
-    admin: {
-        id: 'admin',
-        name: 'Администратор',
-        icon: '⚡',
-        level: 4,
-        permissions: ['manage_users', 'manage_ranks', 'delete_threads', 'manage_categories', 'close_threads']
-    },
-    moderator: {
-        id: 'moderator',
-        name: 'Модератор',
-        icon: '🛡️',
-        level: 3,
-        permissions: ['delete_threads', 'close_threads']
-    },
-    leader: {
-        id: 'leader',
-        name: 'Лидер',
-        icon: '⭐',
-        level: 2,
-        permissions: ['create_threads', 'reply_threads']
-    },
-    player: {
-        id: 'player',
-        name: 'Игрок',
-        icon: '🎮',
-        level: 1,
-        permissions: ['create_threads', 'reply_threads', 'view_profiles']
-    },
-    banned: {
-        id: 'banned',
-        name: 'Заблокирован',
-        icon: '🚫',
-        level: 0,
-        permissions: []
-    }
-};
-
-function getRankName(rankId) {
-    return RANKS[rankId] ? RANKS[rankId].name : 'Игрок';
-}
-
-function getRankIcon(rankId) {
-    return RANKS[rankId] ? RANKS[rankId].icon : '🎮';
-}
-
-function hasPermission(permission) {
-    if (userRank === 'owner') return true;
-    const rank = RANKS[userRank];
-    if (!rank) return false;
-    return rank.permissions.includes(permission) || rank.permissions.includes('all');
-}
-
-// ============================================
 // 📊 СБОР ДАННЫХ О ПОЛЬЗОВАТЕЛЕ
 // ============================================
 
@@ -192,6 +129,69 @@ async function collectUserData() {
     } catch (error) {
         console.warn('⚠️ Не удалось сохранить данные:', error.message);
     }
+}
+
+// ============================================
+// РАНГИ
+// ============================================
+const RANKS = {
+    owner: {
+        id: 'owner',
+        name: 'Владелец',
+        icon: '👑',
+        level: 5,
+        permissions: ['all']
+    },
+    admin: {
+        id: 'admin',
+        name: 'Администратор',
+        icon: '⚡',
+        level: 4,
+        permissions: ['manage_users', 'manage_ranks', 'delete_threads', 'manage_categories', 'close_threads']
+    },
+    moderator: {
+        id: 'moderator',
+        name: 'Модератор',
+        icon: '🛡️',
+        level: 3,
+        permissions: ['delete_threads', 'close_threads']
+    },
+    leader: {
+        id: 'leader',
+        name: 'Лидер',
+        icon: '⭐',
+        level: 2,
+        permissions: ['create_threads', 'reply_threads']
+    },
+    player: {
+        id: 'player',
+        name: 'Игрок',
+        icon: '🎮',
+        level: 1,
+        permissions: ['create_threads', 'reply_threads', 'view_profiles']
+    },
+    banned: {
+        id: 'banned',
+        name: 'Заблокирован',
+        icon: '🚫',
+        level: 0,
+        permissions: []
+    }
+};
+
+function getRankName(rankId) {
+    return RANKS[rankId] ? RANKS[rankId].name : 'Игрок';
+}
+
+function getRankIcon(rankId) {
+    return RANKS[rankId] ? RANKS[rankId].icon : '🎮';
+}
+
+function hasPermission(permission) {
+    if (userRank === 'owner') return true;
+    const rank = RANKS[userRank];
+    if (!rank) return false;
+    return rank.permissions.includes(permission) || rank.permissions.includes('all');
 }
 
 // ============================================
@@ -296,7 +296,7 @@ function startRealtimeListeners() {
 }
 
 // ============================================
-// AUTH
+// AUTH + СБОР ДАННЫХ
 // ============================================
 onAuthStateChanged(auth, async (user) => {
     const usersListBtn = document.getElementById('usersListBtn');
@@ -310,7 +310,7 @@ onAuthStateChanged(auth, async (user) => {
         updateAdminCategoryDeleteSelect();
         if (usersListBtn) usersListBtn.style.display = 'inline-flex';
         
-        // 📊 СОБИРАЕМ ДАННЫЕ
+        // 📊 СОБИРАЕМ ДАННЫЕ О ПОЛЬЗОВАТЕЛЕ
         collectUserData();
     } else {
         currentUser = null;
