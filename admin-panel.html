@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Админ-панель - Информация о пользователях</title>
+    <title>Админ-панель - Полный сбор данных</title>
     <link rel="stylesheet" href="style.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <style>
         .admin-container {
-            max-width: 1200px;
-            margin: 40px auto;
+            max-width: 1400px;
+            margin: 20px auto;
             padding: 20px;
         }
         .admin-header {
             background: var(--dark-card);
-            padding: 24px 32px;
+            padding: 20px 28px;
             border-radius: var(--radius);
             border: 1px solid var(--border);
             margin-bottom: 24px;
@@ -39,26 +39,57 @@
         }
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
         }
         .stat-card {
             background: var(--dark-card);
-            padding: 20px;
+            padding: 16px;
             border-radius: var(--radius);
             border: 1px solid var(--border);
             text-align: center;
         }
         .stat-card .number {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 800;
             color: var(--primary-light);
             display: block;
         }
         .stat-card .label {
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-muted);
+        }
+        .tab-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .tab-bar .tab {
+            padding: 8px 20px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            background: transparent;
+            color: var(--text-muted);
+            transition: var(--transition);
+        }
+        .tab-bar .tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .tab-bar .tab:hover {
+            background: var(--dark-hover);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
         }
         .user-table-wrapper {
             background: var(--dark-card);
@@ -70,41 +101,43 @@
         .user-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
+            font-size: 13px;
         }
         .user-table th {
             background: rgba(255,255,255,0.03);
-            padding: 14px 16px;
+            padding: 10px 12px;
             text-align: left;
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
-            font-size: 11px;
+            font-size: 10px;
             letter-spacing: 0.5px;
             border-bottom: 1px solid var(--border);
             position: sticky;
             top: 0;
             z-index: 10;
+            white-space: nowrap;
         }
         .user-table td {
-            padding: 12px 16px;
+            padding: 8px 12px;
             border-bottom: 1px solid rgba(255,255,255,0.03);
             color: var(--text-light);
             vertical-align: middle;
+            font-size: 12px;
         }
         .user-table tr:hover td {
             background: rgba(255,255,255,0.02);
         }
         .user-table .avatar-mini {
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 12px;
             color: white;
         }
         .user-table .avatar-mini img {
@@ -114,11 +147,12 @@
             object-fit: cover;
         }
         .rank-badge {
-            padding: 2px 12px;
+            padding: 2px 10px;
             border-radius: 20px;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
             display: inline-block;
+            white-space: nowrap;
         }
         .rank-owner { background: linear-gradient(135deg, #fdcb6e, #e17055); color: #0a0a1a; }
         .rank-admin { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white; }
@@ -126,100 +160,91 @@
         .rank-leader { background: linear-gradient(135deg, #fdcb6e, #f39c12); color: #0a0a1a; }
         .rank-player { background: linear-gradient(135deg, #636e72, #b2bec3); color: white; }
         .rank-banned { background: linear-gradient(135deg, #e17055, #d63031); color: white; }
-
+        .badge-online { color: var(--success); }
+        .badge-offline { color: var(--text-muted); }
         .action-btn {
-            padding: 4px 12px;
+            padding: 3px 10px;
             border: none;
-            border-radius: 6px;
-            font-size: 12px;
+            border-radius: 4px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
             transition: var(--transition);
-            margin: 2px;
+            margin: 1px;
         }
-        .action-btn.view {
-            background: var(--primary);
-            color: white;
-        }
-        .action-btn.view:hover {
-            background: var(--primary-dark);
-        }
-        .action-btn.ban {
-            background: var(--danger);
-            color: white;
-        }
-        .action-btn.ban:hover {
-            background: #c0392b;
-        }
+        .action-btn.view { background: var(--primary); color: white; }
+        .action-btn.view:hover { background: var(--primary-dark); }
+        .action-btn.ban { background: var(--danger); color: white; }
+        .action-btn.ban:hover { background: #c0392b; }
+        .action-btn.unban { background: var(--success); color: white; }
+        .action-btn.unban:hover { background: #27ae60; }
+        .action-btn.ip { background: var(--secondary); color: #0a0a1a; }
+        .action-btn.ip:hover { background: #00b894; }
         .search-box {
-            padding: 10px 16px;
+            padding: 8px 14px;
             background: rgba(255,255,255,0.03);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             color: var(--text);
-            font-size: 14px;
-            min-width: 200px;
+            font-size: 13px;
+            min-width: 180px;
             font-family: inherit;
         }
-        .search-box:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
+        .search-box:focus { outline: none; border-color: var(--primary); }
         .back-link {
             color: var(--text-muted);
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            font-size: 14px;
+            gap: 6px;
+            font-size: 13px;
             transition: var(--transition);
         }
-        .back-link:hover {
-            color: var(--primary-light);
-        }
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-muted);
-        }
-        .user-detail-modal .modal-box {
-            width: 500px;
-        }
+        .back-link:hover { color: var(--primary-light); }
         .detail-field {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
         .detail-field label {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             display: block;
         }
         .detail-field .value {
-            font-size: 15px;
+            font-size: 14px;
             color: var(--text);
-            padding: 8px 12px;
+            padding: 6px 12px;
             background: rgba(255,255,255,0.02);
             border-radius: 6px;
             border: 1px solid var(--border);
             word-break: break-all;
         }
+        .detail-field .value.ip {
+            font-family: monospace;
+            color: var(--secondary);
+        }
+        .detail-field .value.browser {
+            color: var(--primary-light);
+        }
+        .export-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
         @media (max-width: 768px) {
-            .admin-header {
-                flex-direction: column;
-                align-items: stretch;
-                text-align: center;
-            }
-            .user-table {
-                font-size: 12px;
-            }
-            .user-table th, .user-table td {
-                padding: 8px 10px;
-            }
-            .action-btn {
-                font-size: 10px;
-                padding: 2px 8px;
-            }
+            .admin-header { flex-direction: column; align-items: stretch; text-align: center; }
+            .user-table { font-size: 11px; }
+            .user-table th, .user-table td { padding: 5px 8px; }
+            .action-btn { font-size: 10px; padding: 2px 6px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 480px) {
+            .admin-container { padding: 8px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+            .stat-card { padding: 10px; }
+            .stat-card .number { font-size: 20px; }
+            .user-table th, .user-table td { padding: 4px 6px; font-size: 10px; }
         }
     </style>
 </head>
@@ -229,9 +254,9 @@
         <div class="admin-header">
             <div>
                 <h1>👑 Админ-панель</h1>
-                <span style="color:var(--text-muted);font-size:14px;">Управление пользователями</span>
+                <span style="color:var(--text-muted);font-size:13px;">Полный сбор данных о пользователях</span>
             </div>
-            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                 <span class="admin-badge">🔒 Только для администраторов</span>
                 <a href="/" class="back-link">← На главную</a>
             </div>
@@ -239,59 +264,141 @@
 
         <!-- СТАТИСТИКА -->
         <div class="stats-grid" id="statsGrid">
-            <div class="stat-card">
-                <span class="number" id="totalUsers">0</span>
-                <span class="label">Всего пользователей</span>
-            </div>
-            <div class="stat-card">
-                <span class="number" id="totalAdmins">0</span>
-                <span class="label">Администраторов</span>
-            </div>
-            <div class="stat-card">
-                <span class="number" id="totalBanned">0</span>
-                <span class="label">Заблокированных</span>
-            </div>
-            <div class="stat-card">
-                <span class="number" id="totalPosts">0</span>
-                <span class="label">Всего сообщений</span>
-            </div>
+            <div class="stat-card"><span class="number" id="totalUsers">0</span><span class="label">Всего пользователей</span></div>
+            <div class="stat-card"><span class="number" id="totalAdmins">0</span><span class="label">Администраторов</span></div>
+            <div class="stat-card"><span class="number" id="totalBanned">0</span><span class="label">Заблокированных</span></div>
+            <div class="stat-card"><span class="number" id="totalOnline">0</span><span class="label">Онлайн сейчас</span></div>
+            <div class="stat-card"><span class="number" id="totalPosts">0</span><span class="label">Сообщений</span></div>
+            <div class="stat-card"><span class="number" id="totalThreads">0</span><span class="label">Тем</span></div>
+        </div>
+
+        <!-- ВКЛАДКИ -->
+        <div class="tab-bar">
+            <button class="tab active" data-tab="users" onclick="switchTab('users')">👥 Пользователи</button>
+            <button class="tab" data-tab="ip" onclick="switchTab('ip')">🌐 IP-адреса</button>
+            <button class="tab" data-tab="browsers" onclick="switchTab('browsers')">💻 Браузеры</button>
+            <button class="tab" data-tab="activity" onclick="switchTab('activity')">📊 Активность</button>
+            <button class="tab" data-tab="export" onclick="switchTab('export')">📥 Экспорт</button>
         </div>
 
         <!-- ПОИСК -->
-        <div style="margin-bottom:16px;display:flex;gap:12px;flex-wrap:wrap;">
-            <input type="text" id="searchInput" class="search-box" placeholder="🔍 Поиск по нику или email..." oninput="filterUsers()" />
-            <button class="btn btn-primary" onclick="exportData()">📥 Экспорт CSV</button>
-            <button class="btn btn-danger" onclick="confirmClearAll()">🗑️ Очистить всех</button>
+        <div style="margin-bottom:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <input type="text" id="searchInput" class="search-box" placeholder="🔍 Поиск по нику, email или IP..." oninput="filterUsers()" />
+            <button class="btn btn-primary btn-sm" onclick="exportCSV()">📥 CSV</button>
+            <button class="btn btn-success btn-sm" onclick="exportJSON()">📄 JSON</button>
         </div>
 
-        <!-- ТАБЛИЦА -->
-        <div class="user-table-wrapper">
-            <table class="user-table" id="userTable">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Аватар</th>
-                        <th>Ник</th>
-                        <th>Email</th>
-                        <th>Ранг</th>
-                        <th>Тем</th>
-                        <th>Постов</th>
-                        <th>Подписчиков</th>
-                        <th>Дата регистрации</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
-                <tbody id="userTableBody">
-                    <tr><td colspan="10" class="empty-state">Загрузка...</td></tr>
-                </tbody>
-            </table>
+        <!-- ВКЛАДКА: ПОЛЬЗОВАТЕЛИ -->
+        <div id="tab-users" class="tab-content active">
+            <div class="user-table-wrapper">
+                <table class="user-table" id="userTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Аватар</th>
+                            <th>Ник</th>
+                            <th>Email</th>
+                            <th>Ранг</th>
+                            <th>IP</th>
+                            <th>Браузер</th>
+                            <th>ОС</th>
+                            <th>Тем</th>
+                            <th>Постов</th>
+                            <th>Дата рег.</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <tr><td colspan="13" class="empty-state">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ВКЛАДКА: IP-АДРЕСА -->
+        <div id="tab-ip" class="tab-content">
+            <div class="user-table-wrapper">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>Ник</th>
+                            <th>Email</th>
+                            <th>IP-адрес</th>
+                            <th>Страна</th>
+                            <th>Провайдер</th>
+                            <th>Последний вход</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ipTableBody">
+                        <tr><td colspan="6" class="empty-state">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ВКЛАДКА: БРАУЗЕРЫ -->
+        <div id="tab-browsers" class="tab-content">
+            <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));" id="browserStats"></div>
+            <div class="user-table-wrapper">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>Ник</th>
+                            <th>Браузер</th>
+                            <th>Версия</th>
+                            <th>ОС</th>
+                            <th>Разрешение</th>
+                            <th>Язык</th>
+                        </tr>
+                    </thead>
+                    <tbody id="browserTableBody">
+                        <tr><td colspan="6" class="empty-state">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ВКЛАДКА: АКТИВНОСТЬ -->
+        <div id="tab-activity" class="tab-content">
+            <div class="user-table-wrapper">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>Ник</th>
+                            <th>Последняя активность</th>
+                            <th>Всего сессий</th>
+                            <th>Среднее время</th>
+                            <th>Страниц просмотрено</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activityTableBody">
+                        <tr><td colspan="5" class="empty-state">Загрузка...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ВКЛАДКА: ЭКСПОРТ -->
+        <div id="tab-export" class="tab-content">
+            <div style="background:var(--dark-card);padding:24px;border-radius:var(--radius);border:1px solid var(--border);">
+                <h3 style="margin-bottom:16px;">📥 Экспорт данных</h3>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                    <button class="btn btn-primary" onclick="exportCSV()">📥 CSV (Excel)</button>
+                    <button class="btn btn-success" onclick="exportJSON()">📄 JSON</button>
+                    <button class="btn btn-admin" onclick="exportFullReport()">📊 Полный отчёт</button>
+                </div>
+                <p style="color:var(--text-muted);font-size:13px;margin-top:12px;">
+                    ⚠️ Данные содержат IP-адреса и информацию о браузерах. Храните файлы в безопасности.
+                </p>
+            </div>
         </div>
     </div>
 
-    <!-- МОДАЛКА ДЕТАЛЕЙ ПОЛЬЗОВАТЕЛЯ -->
+    <!-- МОДАЛКА ДЕТАЛЕЙ -->
     <div class="modal" id="userDetailModal">
         <div class="modal-overlay" onclick="closeModal('userDetailModal')"></div>
-        <div class="modal-box user-detail-modal">
+        <div class="modal-box" style="width:550px;max-width:95%;">
             <button class="modal-close" onclick="closeModal('userDetailModal')">×</button>
             <div class="modal-head">
                 <div class="modal-icon">👤</div>
@@ -299,20 +406,26 @@
                 <p id="detailUserRank">Ранг</p>
             </div>
             <div id="detailContent">
-                <div class="detail-field"><label>UID</label><div class="value" id="detailUid">-</div></div>
-                <div class="detail-field"><label>Email</label><div class="value" id="detailEmail">-</div></div>
-                <div class="detail-field"><label>О себе</label><div class="value" id="detailBio">-</div></div>
-                <div class="detail-field"><label>Аватар</label><div class="value" id="detailAvatar">-</div></div>
-                <div class="detail-field"><label>Тем создано</label><div class="value" id="detailThreads">0</div></div>
-                <div class="detail-field"><label>Сообщений</label><div class="value" id="detailPosts">0</div></div>
-                <div class="detail-field"><label>Подписчиков</label><div class="value" id="detailFollowers">0</div></div>
-                <div class="detail-field"><label>Подписок</label><div class="value" id="detailFollowing">0</div></div>
-                <div class="detail-field"><label>Репутация</label><div class="value" id="detailReputation">0</div></div>
-                <div class="detail-field"><label>Дата регистрации</label><div class="value" id="detailCreated">-</div></div>
-                <div class="detail-field"><label>Последняя активность</label><div class="value" id="detailUpdated">-</div></div>
-                <div class="detail-field"><label>Заблокирован</label><div class="value" id="detailBanned">Нет</div></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <div class="detail-field"><label>UID</label><div class="value" id="detailUid">-</div></div>
+                    <div class="detail-field"><label>Email</label><div class="value" id="detailEmail">-</div></div>
+                    <div class="detail-field"><label>IP-адрес</label><div class="value ip" id="detailIp">-</div></div>
+                    <div class="detail-field"><label>Браузер</label><div class="value browser" id="detailBrowser">-</div></div>
+                    <div class="detail-field"><label>ОС</label><div class="value" id="detailOs">-</div></div>
+                    <div class="detail-field"><label>Разрешение</label><div class="value" id="detailResolution">-</div></div>
+                    <div class="detail-field"><label>Язык</label><div class="value" id="detailLanguage">-</div></div>
+                    <div class="detail-field"><label>Временная зона</label><div class="value" id="detailTimezone">-</div></div>
+                    <div class="detail-field"><label>Тем создано</label><div class="value" id="detailThreads">0</div></div>
+                    <div class="detail-field"><label>Сообщений</label><div class="value" id="detailPosts">0</div></div>
+                    <div class="detail-field"><label>Подписчиков</label><div class="value" id="detailFollowers">0</div></div>
+                    <div class="detail-field"><label>Репутация</label><div class="value" id="detailReputation">0</div></div>
+                    <div class="detail-field"><label>Дата регистрации</label><div class="value" id="detailCreated">-</div></div>
+                    <div class="detail-field"><label>Последняя активность</label><div class="value" id="detailUpdated">-</div></div>
+                    <div class="detail-field"><label>Статус</label><div class="value" id="detailStatus">-</div></div>
+                    <div class="detail-field"><label>Referrer</label><div class="value" id="detailReferrer">-</div></div>
+                </div>
             </div>
-            <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;">
+            <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
                 <button class="btn btn-danger" onclick="banUserFromDetail()">🚫 Заблокировать</button>
                 <button class="btn btn-success" onclick="unbanUserFromDetail()">✅ Разблокировать</button>
                 <button class="btn btn-admin" onclick="changeRankFromDetail()">⚡ Изменить ранг</button>
