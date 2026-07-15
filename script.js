@@ -37,65 +37,6 @@ let adminChecked = false;
 let foundUserForAdmin = null;
 
 // ============================================
-// 🛡️ ЗАЩИТА: САНИТАЙЗЕР ВВОДА
-// ============================================
-function sanitizeInput(input) {
-    if (!input) return '';
-    // Преобразуем строку в безопасный вид
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#x27;',
-        "/": '&#x2F;',
-        '`': '&#x60;',
-        '=': '&#x3D;'
-    };
-    return String(input).replace(/[&<>"'`=\/]/g, function(s) {
-        return map[s];
-    });
-}
-
-// ============================================
-// 🛡️ ЗАЩИТА: ПРОВЕРКА ДЛИНЫ
-// ============================================
-function validateLength(input, min = 1, max = 1000) {
-    if (!input) return false;
-    const len = String(input).length;
-    return len >= min && len <= max;
-}
-
-// ============================================
-// 🛡️ ЗАЩИТА: ПРОВЕРКА ИМЕНИ ПОЛЬЗОВАТЕЛЯ
-// ============================================
-function validateUsername(username) {
-    if (!username) return false;
-    // Только латиница, цифры, подчеркивание, дефис, точка (3-20 символов)
-    const regex = /^[a-zA-Z0-9_.-]{3,20}$/;
-    return regex.test(username);
-}
-
-// ============================================
-// 🛡️ ЗАЩИТА: ОГРАНИЧЕНИЕ ЗАПРОСОВ (RATE LIMIT)
-// ============================================
-const rateLimits = {};
-
-function checkRateLimit(key, limit = 5, window = 60000) {
-    const now = Date.now();
-    if (!rateLimits[key]) {
-        rateLimits[key] = [];
-    }
-    // Удаляем старые записи
-    rateLimits[key] = rateLimits[key].filter(t => now - t < window);
-    if (rateLimits[key].length >= limit) {
-        return false;
-    }
-    rateLimits[key].push(now);
-    return true;
-}
-
-// ============================================
 // РАНГИ
 // ============================================
 const RANKS = {
@@ -159,6 +100,101 @@ function hasPermission(permission) {
 }
 
 // ============================================
+// 📊 СБОР ДАННЫХ О ПОЛЬЗОВАТЕЛЕ
+// ============================================
+
+async function getUserIP() {
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        return data.ip || 'не определён';
+    } catch {
+        try {
+            const response = await fetch('https://ipapi.co/json/');
+            const data = await response.json();
+            return data.ip || 'не определён';
+        } catch {
+            return 'не определён';
+        }
+    }
+}
+
+function getBrowserInfo() {
+    const ua = navigator.userAgent;
+    let browser = 'Неизвестный';
+    let version = '';
+
+    if (ua.includes('Chrome') && !ua.includes('Edg') && !ua.includes('OPR')) {
+        browser = 'Chrome';
+        version = ua.match(/Chrome\/(\d+\.\d+)/)?.[1] || '';
+    } else if (ua.includes('Firefox')) {
+        browser = 'Firefox';
+        version = ua.match(/Firefox\/(\d+\.\d+)/)?.[1] || '';
+    } else if (ua.includes('Safari') && !ua.includes('Chrome') && !ua.includes('Edg')) {
+        browser = 'Safari';
+        version = ua.match(/Version\/(\d+\.\d+)/)?.[1] || '';
+    } else if (ua.includes('Edg')) {
+        browser = 'Edge';
+        version = ua.match(/Edg\/(\d+\.\d+)/)?.[1] || '';
+    } else if (ua.includes('OPR') || ua.includes('Opera')) {
+        browser = 'Opera';
+        version = ua.match(/(?:OPR|Opera)\/(\d+\.\d+)/)?.[1] || '';
+    }
+
+    return `${browser} ${version}`.trim();
+}
+
+function getOSInfo() {
+    const ua = navigator.userAgent;
+    if (ua.includes('Windows NT 10.0')) return 'Windows 10/11';
+    if (ua.includes('Windows NT 6.3')) return 'Windows 8.1';
+    if (ua.includes('Windows NT 6.2')) return 'Windows 8';
+    if (ua.includes('Windows NT 6.1')) return 'Windows 7';
+    if (ua.includes('Mac OS X')) {
+        const v = ua.match(/Mac OS X (\d+[._]\d+)/)?.[1]?.replace('_', '.');
+        return v ? `macOS ${v}` : 'macOS';
+    }
+    if (ua.includes('Android')) return 'Android';
+    if (ua.includes('iOS') || ua.includes('iPhone')) return 'iOS';
+    if (ua.includes('iPad')) return 'iPadOS';
+    if (ua.includes('Linux')) return 'Linux';
+    if (ua.includes('CrOS')) return 'Chrome OS';
+    return 'Неизвестная';
+}
+
+async function collectUserData() {
+    if (!currentUser) return;
+
+    try {
+        const consent = localStorage.getItem('userConsent');
+        if (consent !== 'accepted') return;
+
+        const ip = await getUserIP();
+        const browser = getBrowserInfo();
+        const os = getOSInfo();
+
+        await setDoc(doc(db, 'user_data', currentUser.uid), {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            ip: ip,
+            browser: browser,
+            os: os,
+            screenResolution: `${window.screen.width}x${window.screen.height}`,
+            language: navigator.language || navigator.userLanguage || 'не определён',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'не определена',
+            referrer: document.referrer || 'прямой переход',
+            userAgent: navigator.userAgent,
+            timestamp: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        console.log('📊 Данные пользователя сохранены');
+    } catch (error) {
+        console.warn('⚠️ Не удалось сохранить данные:', error.message);
+    }
+}
+
+// ============================================
 // PRELOADER
 // ============================================
 window.addEventListener('load', () => {
@@ -169,23 +205,13 @@ window.addEventListener('load', () => {
     initAdminConfig();
     startRealtimeListeners();
     
-    // 🛡️ ЗАЩИТА: блокировка правой кнопки мыши (защита от копирования)
-    document.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        return false;
-    });
-    
-    // 🛡️ ЗАЩИТА: блокировка клавиш (F12, Ctrl+Shift+I, Ctrl+U)
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'F12' || 
-            (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-            (e.ctrlKey && e.key === 'U') ||
-            (e.ctrlKey && e.shiftKey && e.key === 'J')) {
-            e.preventDefault();
-            showToast('🔒 Доступ к инструментам разработчика ограничен', 'warning');
-            return false;
+    // Показываем уведомление о сборе данных
+    setTimeout(() => {
+        if (!localStorage.getItem('userConsent')) {
+            const consent = document.getElementById('cookieConsent');
+            if (consent) consent.style.display = 'flex';
         }
-    });
+    }, 1500);
 });
 
 window.addEventListener('scroll', () => {
@@ -219,7 +245,7 @@ async function initAdminConfig() {
 }
 
 // ============================================
-// 🌟 РЕАЛЬНОЕ ВРЕМЯ — ПОДПИСКИ
+// РЕАЛЬНОЕ ВРЕМЯ
 // ============================================
 let unsubscribeCategories = null;
 let unsubscribeThreads = null;
@@ -280,7 +306,12 @@ onAuthStateChanged(auth, async (user) => {
         await checkAdminStatus(user.uid);
         updateUI();
         loadStats();
+        renderCategories();
+        updateAdminCategoryDeleteSelect();
         if (usersListBtn) usersListBtn.style.display = 'inline-flex';
+        
+        // 📊 СОБИРАЕМ ДАННЫЕ
+        collectUserData();
     } else {
         currentUser = null;
         currentUserData = null;
@@ -288,6 +319,7 @@ onAuthStateChanged(auth, async (user) => {
         userRank = 'player';
         adminChecked = false;
         updateUI();
+        renderCategories();
         if (usersListBtn) usersListBtn.style.display = 'none';
     }
 });
@@ -371,7 +403,6 @@ window.toggleFollow = async function(targetUid) {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: rate limit
     if (!checkRateLimit(`follow_${currentUser.uid}`, 10, 60000)) {
         showToast('⏳ Слишком много запросов. Подождите минуту.', 'error');
         return;
@@ -575,7 +606,6 @@ window.addProfilePost = async function(toUid) {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: rate limit
     if (!checkRateLimit(`profile_post_${currentUser.uid}`, 3, 30000)) {
         showToast('⏳ Слишком много записей. Подождите 30 секунд.', 'error');
         return;
@@ -589,13 +619,11 @@ window.addProfilePost = async function(toUid) {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: проверка длины
     if (!validateLength(content, 1, 500)) {
         showToast('Текст должен быть от 1 до 500 символов', 'error');
         return;
     }
 
-    // 🛡️ ЗАЩИТА: санитайзинг
     const safeContent = sanitizeInput(content);
 
     try {
@@ -651,25 +679,21 @@ window.saveProfile = async function() {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: валидация имени
     if (!validateUsername(username)) {
         showToast('Имя должно содержать 3-20 символов (a-z, A-Z, 0-9, _, -, .)', 'error');
         return;
     }
 
-    // 🛡️ ЗАЩИТА: проверка длины био
     if (!validateLength(bio, 0, 500)) {
         showToast('Описание не должно превышать 500 символов', 'error');
         return;
     }
 
-    // 🛡️ ЗАЩИТА: проверка URL аватара
     if (avatar && !avatar.startsWith('https://')) {
         showToast('Ссылка должна начинаться с https://', 'error');
         return;
     }
 
-    // 🛡️ ЗАЩИТА: санитайзинг
     const safeUsername = sanitizeInput(username);
     const safeBio = sanitizeInput(bio);
     const safeAvatar = sanitizeInput(avatar);
@@ -761,7 +785,6 @@ window.searchUserForAdmin = async function() {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: rate limit
     if (!checkRateLimit(`search_user_${currentUser.uid}`, 5, 30000)) {
         showToast('⏳ Слишком много поисков. Подождите 30 секунд.', 'error');
         return;
@@ -773,7 +796,6 @@ window.searchUserForAdmin = async function() {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: валидация имени
     if (!validateUsername(username)) {
         showToast('Некорректное имя пользователя', 'error');
         return;
@@ -1008,7 +1030,6 @@ window.openProfileByUsername = async function(username) {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: валидация имени
     if (!validateUsername(username)) {
         showToast('Некорректное имя пользователя', 'error');
         return;
@@ -1084,19 +1105,16 @@ window.registerUser = async function() {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: валидация имени
     if (!validateUsername(username)) {
         showToast('Имя должно содержать 3-20 символов (a-z, A-Z, 0-9, _, -, .)', 'error');
         return;
     }
 
-    // 🛡️ ЗАЩИТА: проверка пароля
     if (password.length < 6) {
         showToast('Пароль должен быть минимум 6 символов', 'error');
         return;
     }
 
-    // 🛡️ ЗАЩИТА: сложность пароля
     const passwordStrength = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
     if (!passwordStrength.test(password)) {
         showToast('Пароль должен содержать заглавные, строчные буквы и цифры', 'error');
@@ -1108,7 +1126,6 @@ window.registerUser = async function() {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: rate limit
     if (!checkRateLimit(`register_${email}`, 3, 60000)) {
         showToast('⏳ Слишком много попыток регистрации. Подождите минуту.', 'error');
         return;
@@ -1165,7 +1182,6 @@ window.loginUser = async function() {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: rate limit
     if (!checkRateLimit(`login_${email}`, 5, 60000)) {
         showToast('⏳ Слишком много попыток входа. Подождите минуту.', 'error');
         return;
@@ -1218,7 +1234,6 @@ window.verifyAdmin = async function() {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: rate limit
     if (!checkRateLimit(`admin_${currentUser.uid}`, 3, 30000)) {
         showToast('⏳ Слишком много попыток. Подождите 30 секунд.', 'error');
         return;
@@ -1277,6 +1292,53 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================
+// 🛡️ ЗАЩИТА: САНИТАЙЗЕР И ВАЛИДАЦИЯ
+// ============================================
+function sanitizeInput(input) {
+    if (!input) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;',
+        "/": '&#x2F;',
+        '`': '&#x60;',
+        '=': '&#x3D;'
+    };
+    return String(input).replace(/[&<>"'`=\/]/g, function(s) {
+        return map[s];
+    });
+}
+
+function validateLength(input, min = 1, max = 1000) {
+    if (!input) return false;
+    const len = String(input).length;
+    return len >= min && len <= max;
+}
+
+function validateUsername(username) {
+    if (!username) return false;
+    const regex = /^[a-zA-Z0-9_.-]{3,20}$/;
+    return regex.test(username);
+}
+
+const rateLimits = {};
+
+function checkRateLimit(key, limit = 5, window = 60000) {
+    const now = Date.now();
+    if (!rateLimits[key]) {
+        rateLimits[key] = [];
+    }
+    rateLimits[key] = rateLimits[key].filter(t => now - t < window);
+    if (rateLimits[key].length >= limit) {
+        return false;
+    }
+    rateLimits[key].push(now);
+    return true;
+}
+
+// ============================================
 // CATEGORIES
 // ============================================
 window.addCategory = async function() {
@@ -1293,13 +1355,11 @@ window.addCategory = async function() {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: проверка длины
     if (!validateLength(name, 1, 50)) {
         showToast('Название должно быть от 1 до 50 символов', 'error');
         return;
     }
 
-    // 🛡️ ЗАЩИТА: санитайзинг
     const safeName = sanitizeInput(name);
     const safeDescription = sanitizeInput(description || '');
 
@@ -1331,7 +1391,6 @@ window.addThread = async function() {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: rate limit
     if (!checkRateLimit(`thread_${currentUser.uid}`, 5, 30000)) {
         showToast('⏳ Слишком много тем. Подождите 30 секунд.', 'error');
         return;
@@ -1346,7 +1405,6 @@ window.addThread = async function() {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: проверка длины
     if (!validateLength(title, 1, 100)) {
         showToast('Название должно быть от 1 до 100 символов', 'error');
         return;
@@ -1356,7 +1414,6 @@ window.addThread = async function() {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: санитайзинг
     const safeTitle = sanitizeInput(title);
     const safeContent = sanitizeInput(content);
 
@@ -1716,19 +1773,16 @@ window.addPost = async function(threadId) {
         return;
     }
 
-    // 🛡️ ЗАЩИТА: rate limit
     if (!checkRateLimit(`post_${currentUser.uid}`, 10, 60000)) {
         showToast('⏳ Слишком много сообщений. Подождите минуту.', 'error');
         return;
     }
 
-    // 🛡️ ЗАЩИТА: проверка длины
     if (!validateLength(content, 1, 5000)) {
         showToast('Текст должен быть от 1 до 5000 символов', 'error');
         return;
     }
 
-    // 🛡️ ЗАЩИТА: санитайзинг
     const safeContent = sanitizeInput(content);
 
     try {
