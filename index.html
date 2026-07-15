@@ -29,8 +29,8 @@
                     </div>
                 </div>
                 <div class="user-panel" id="userPanel">
-                    <div class="user-profile" id="userInfo" style="display:none;">
-                        <div class="user-avatar" id="userAvatar" onclick="openProfile()" style="cursor:pointer;">
+                    <div class="user-profile" id="userInfo" style="display:none;" onclick="openProfile(event)">
+                        <div class="user-avatar" id="userAvatar">
                             <img id="avatarImg" src="" alt="Avatar" />
                             <span id="avatarLetter">U</span>
                         </div>
@@ -88,9 +88,12 @@
                 <div id="forumView">
                     <div id="categoriesView">
                         <div class="section-toolbar">
-                            <h3>Разделы форума</h3>
+                            <h3>📂 Разделы форума</h3>
                             <span class="section-counter" id="categoriesCount">0 разделов</span>
-                            <button class="btn btn-success btn-sm" onclick="refreshForum()">🔄 Обновить</button>
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn btn-admin btn-sm" onclick="openModal('adminModal')">⚡ Админ</button>
+                                <button class="btn btn-success btn-sm" onclick="refreshForum()">🔄 Обновить</button>
+                            </div>
                         </div>
                         <div id="categoriesContainer">
                             <div class="loading-state">
@@ -281,7 +284,7 @@
         </div>
     </div>
 
-    <!-- PROFILE MODAL (для редактирования) -->
+    <!-- PROFILE EDIT MODAL -->
     <div class="modal" id="profileEditModal">
         <div class="modal-overlay" onclick="closeModal('profileEditModal')"></div>
         <div class="modal-box">

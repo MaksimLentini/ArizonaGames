@@ -99,7 +99,9 @@ async function loadUserProfile(uid) {
     }
 }
 
-window.openProfile = function() {
+window.openProfile = function(e) {
+    if (e) e.stopPropagation();
+    
     if (!currentUser) {
         showToast('Войдите в аккаунт', 'error');
         return;
@@ -110,6 +112,7 @@ window.openProfile = function() {
     const container = document.getElementById('profileContainer');
     
     forumView.style.display = 'none';
+    document.getElementById('pageView').style.display = 'none';
     profileView.style.display = 'block';
     
     getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
@@ -125,9 +128,12 @@ window.openProfile = function() {
                 <div class="profile-header">
                     <div class="profile-avatar-wrapper">
                         ${avatarUrl ? 
-                            `<img src="${avatarUrl}" alt="Avatar" class="profile-avatar-img" />` : 
-                            `<div class="profile-avatar-letter">${username[0].toUpperCase()}</div>`
+                            `<img src="${avatarUrl}" alt="Avatar" class="profile-avatar-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" />` : 
+                            ''
                         }
+                        <div class="profile-avatar-letter" ${avatarUrl ? 'style="display:none;"' : ''}>
+                            ${username[0].toUpperCase()}
+                        </div>
                         <button class="btn btn-outline btn-sm profile-edit-btn" onclick="openProfileEdit()">
                             ✏️ Редактировать
                         </button>
@@ -138,6 +144,7 @@ window.openProfile = function() {
                         <div class="profile-meta">
                             <span>📅 Присоединился: ${createdAt}</span>
                             ${isAdmin ? '<span class="role-badge" style="display:inline-block;">👑 Администратор</span>' : ''}
+                            <span>📧 ${currentUser.email}</span>
                         </div>
                     </div>
                 </div>
@@ -416,7 +423,6 @@ window.addThread = async function() {
             replies: 0
         });
 
-        // Обновляем счётчик тем у пользователя
         const userRef = doc(db, 'users', currentUser.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
@@ -703,7 +709,6 @@ window.addPost = async function(threadId) {
             createdAt: serverTimestamp()
         });
 
-        // Обновляем счётчик постов у пользователя
         const userRef = doc(db, 'users', currentUser.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
