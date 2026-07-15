@@ -5,27 +5,62 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Arizona RolePlay Forum</title>
     <link rel="stylesheet" href="style.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
 <body>
     <div id="app">
+        <!-- ===== PRELOADER ===== -->
+        <div class="preloader" id="preloader">
+            <div class="preloader-content">
+                <div class="preloader-logo">🎮</div>
+                <div class="preloader-spinner"></div>
+                <p>Загрузка форума...</p>
+            </div>
+        </div>
+
+        <!-- ===== BACKGROUND EFFECTS ===== -->
+        <div class="bg-effects">
+            <div class="bg-orb orb-1"></div>
+            <div class="bg-orb orb-2"></div>
+            <div class="bg-orb orb-3"></div>
+            <div class="bg-grid"></div>
+        </div>
+
         <!-- ===== HEADER ===== -->
         <header class="header">
             <div class="container header-content">
                 <div class="logo">
-                    <h1>🎮 Arizona RP</h1>
-                    <span>RolePlay Community Forum</span>
+                    <div class="logo-icon">🎮</div>
+                    <div>
+                        <h1>Arizona <span>RP</span></h1>
+                        <span class="logo-subtitle">RolePlay Community Forum</span>
+                    </div>
                 </div>
                 <div class="user-panel" id="userPanel">
                     <div class="user-info" id="userInfo" style="display:none;">
-                        <div class="avatar" id="userAvatar">👤</div>
-                        <span id="currentUser"></span>
+                        <div class="avatar" id="userAvatar">
+                            <span id="avatarLetter">U</span>
+                        </div>
+                        <div class="user-details">
+                            <span id="currentUser" class="username"></span>
+                            <span class="user-status online">● Онлайн</span>
+                        </div>
                         <span class="badge-admin" id="adminBadge" style="display:none;">👑 Admin</span>
                     </div>
-                    <button class="btn btn-primary" id="loginBtn" onclick="showLoginModal()">Войти</button>
-                    <button class="btn btn-outline" id="registerBtn" onclick="showRegisterModal()">Регистрация</button>
-                    <button class="btn btn-danger" id="logoutBtn" style="display:none;" onclick="logout()">Выйти</button>
+                    <button class="btn btn-primary" id="loginBtn" onclick="showLoginModal()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                        Войти
+                    </button>
+                    <button class="btn btn-outline" id="registerBtn" onclick="showRegisterModal()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                        Регистрация
+                    </button>
+                    <button class="btn btn-danger" id="logoutBtn" style="display:none;" onclick="logout()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        Выйти
+                    </button>
                     <button class="btn btn-admin" id="adminPanelBtn" style="display:none;" onclick="showAdminPanel()">
-                        ⚙️ Админ
+                        ⚡ Админ
                     </button>
                 </div>
             </div>
@@ -33,38 +68,48 @@
 
         <!-- ===== MAIN CONTENT ===== -->
         <main class="container">
+            <!-- Welcome Banner -->
+            <div class="welcome-banner" id="welcomeBanner">
+                <div class="banner-content">
+                    <h2>Добро пожаловать в <span>Arizona RP</span></h2>
+                    <p>Присоединяйтесь к крупнейшему RolePlay сообществу. Общайтесь, играйте и создавайте!</p>
+                    <div class="banner-stats">
+                        <div class="banner-stat">
+                            <span class="banner-stat-value" id="bannerUsers">0</span>
+                            <span class="banner-stat-label">Участников</span>
+                        </div>
+                        <div class="banner-stat">
+                            <span class="banner-stat-value" id="bannerThreads">0</span>
+                            <span class="banner-stat-label">Тем</span>
+                        </div>
+                        <div class="banner-stat">
+                            <span class="banner-stat-value" id="bannerPosts">0</span>
+                            <span class="banner-stat-label">Сообщений</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="forumView">
-                <!-- Статистика -->
-                <div class="stats-bar" id="statsBar">
-                    <div class="stat-item">
-                        <span class="stat-value" id="totalUsers">0</span>
-                        <span class="stat-label">Пользователей</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value" id="totalThreads">0</span>
-                        <span class="stat-label">Тем</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value" id="totalPosts">0</span>
-                        <span class="stat-label">Сообщений</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value" id="onlineUsers">0</span>
-                        <span class="stat-label">Онлайн</span>
-                    </div>
-                </div>
-
-                <!-- Категории -->
+                <!-- Categories -->
                 <div id="categoriesView">
+                    <div class="section-header">
+                        <h2>📂 Разделы форума</h2>
+                        <span class="section-count" id="categoriesCount">0 разделов</span>
+                    </div>
                     <div id="categoriesContainer">
-                        <div class="loading-spinner">Загрузка...</div>
+                        <div class="loading-spinner">
+                            <div class="spinner"></div>
+                            <p>Загрузка разделов...</p>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Просмотр темы -->
+                <!-- Thread View -->
                 <div id="threadView" style="display:none;">
                     <button class="btn btn-outline back-btn" onclick="showCategories()">
-                        ← Назад к разделам
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                        Назад к разделам
                     </button>
                     <div id="threadContainer"></div>
                 </div>
@@ -74,31 +119,60 @@
         <!-- ===== FOOTER ===== -->
         <footer class="footer">
             <div class="container">
-                <p>Arizona RolePlay Forum © 2024 | Сделано с ❤️ для сообщества</p>
+                <div class="footer-content">
+                    <div class="footer-brand">
+                        <span class="footer-logo">🎮 Arizona RP</span>
+                        <p>RolePlay Community Forum</p>
+                    </div>
+                    <div class="footer-links">
+                        <a href="#">Правила</a>
+                        <a href="#">Помощь</a>
+                        <a href="#">Контакты</a>
+                    </div>
+                    <div class="footer-copy">
+                        <p>© 2024 Arizona RP. Все права защищены.</p>
+                    </div>
+                </div>
             </div>
         </footer>
     </div>
 
     <!-- ===== TOAST ===== -->
-    <div class="toast" id="toast"></div>
+    <div class="toast" id="toast">
+        <div class="toast-icon" id="toastIcon">✅</div>
+        <div class="toast-content">
+            <div class="toast-title" id="toastTitle">Успех</div>
+            <div class="toast-message" id="toastMessage">Действие выполнено</div>
+        </div>
+        <button class="toast-close" onclick="closeToast()">×</button>
+    </div>
 
     <!-- ===== LOGIN MODAL ===== -->
     <div class="modal" id="loginModal">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('loginModal')">×</button>
-            <h2>🔑 Вход в форум</h2>
-            <div class="form-group">
-                <label>📧 Email</label>
-                <input type="email" id="loginEmail" placeholder="Введите email" />
+            <div class="modal-header">
+                <div class="modal-icon">🔑</div>
+                <h2>Вход в аккаунт</h2>
+                <p>Войдите, чтобы продолжить общение</p>
             </div>
-            <div class="form-group">
-                <label>🔒 Пароль</label>
-                <input type="password" id="loginPassword" placeholder="Введите пароль" />
-            </div>
-            <button class="btn btn-primary" onclick="login()" style="width:100%;">Войти</button>
+            <form id="loginForm" onsubmit="event.preventDefault(); login();">
+                <div class="form-group">
+                    <label>📧 Email</label>
+                    <input type="email" id="loginEmail" placeholder="example@email.com" required />
+                </div>
+                <div class="form-group">
+                    <label>🔒 Пароль</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="loginPassword" placeholder="Введите пароль" required />
+                        <button type="button" class="password-toggle" onclick="togglePassword('loginPassword', this)">👁️</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Войти</button>
+            </form>
             <p class="modal-switch">
-                Нет аккаунта?
-                <span onclick="switchToRegister()">Зарегистрируйтесь</span>
+                Нет аккаунта? 
+                <span onclick="switchToRegister()">Создать аккаунт</span>
             </p>
         </div>
     </div>
@@ -107,67 +181,95 @@
     <div class="modal" id="registerModal">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('registerModal')">×</button>
-            <h2>📝 Регистрация</h2>
-            <div class="form-group">
-                <label>👤 Имя пользователя</label>
-                <input type="text" id="regUsername" placeholder="Придумайте логин" />
+            <div class="modal-header">
+                <div class="modal-icon">📝</div>
+                <h2>Регистрация</h2>
+                <p>Присоединяйтесь к сообществу</p>
             </div>
-            <div class="form-group">
-                <label>📧 Email</label>
-                <input type="email" id="regEmail" placeholder="Введите email" />
-            </div>
-            <div class="form-group">
-                <label>🔒 Пароль (минимум 6 символов)</label>
-                <input type="password" id="regPassword" placeholder="Придумайте пароль" />
-            </div>
-            <button class="btn btn-success" onclick="register()" style="width:100%;">Зарегистрироваться</button>
+            <form id="registerForm" onsubmit="event.preventDefault(); register();">
+                <div class="form-group">
+                    <label>👤 Имя пользователя</label>
+                    <input type="text" id="regUsername" placeholder="Ваш никнейм" required />
+                </div>
+                <div class="form-group">
+                    <label>📧 Email</label>
+                    <input type="email" id="regEmail" placeholder="example@email.com" required />
+                </div>
+                <div class="form-group">
+                    <label>🔒 Пароль (минимум 6 символов)</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="regPassword" placeholder="Придумайте пароль" required />
+                        <button type="button" class="password-toggle" onclick="togglePassword('regPassword', this)">👁️</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>✅ Подтвердите пароль</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="regPasswordConfirm" placeholder="Повторите пароль" required />
+                        <button type="button" class="password-toggle" onclick="togglePassword('regPasswordConfirm', this)">👁️</button>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success btn-full">Создать аккаунт</button>
+            </form>
             <p class="modal-switch">
-                Уже есть аккаунт?
-                <span onclick="switchToLogin()">Войдите</span>
+                Уже есть аккаунт? 
+                <span onclick="switchToLogin()">Войти</span>
             </p>
         </div>
     </div>
 
     <!-- ===== ADMIN MODAL ===== -->
-    <div class="modal" id="adminModal">
+    <div class="modal modal-large" id="adminModal">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal('adminModal')">×</button>
-            <h2>👑 Админ-панель</h2>
+            <div class="modal-header">
+                <div class="modal-icon">⚡</div>
+                <h2>Админ-панель</h2>
+                <p>Управление форумом</p>
+            </div>
 
-            <div class="admin-panel-input">
+            <div class="admin-verify">
                 <div class="form-group">
-                    <label>🔐 Введите пароль администратора</label>
-                    <input type="password" id="adminPassword" placeholder="Введите пароль 1267" />
+                    <label>🔐 Пароль администратора</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="adminPassword" placeholder="Введите пароль 1267" />
+                        <button type="button" class="password-toggle" onclick="togglePassword('adminPassword', this)">👁️</button>
+                    </div>
                 </div>
-                <button class="btn btn-admin" onclick="verifyAdmin()" style="width:100%;">
-                    Получить права администратора
+                <button class="btn btn-admin" onclick="verifyAdmin()">
+                    <span id="adminVerifyText">Получить права администратора</span>
                 </button>
             </div>
 
             <hr class="divider" />
 
             <div id="adminActions" style="display:none;">
-                <!-- Создание раздела -->
+                <!-- Create Category -->
                 <div class="admin-section">
-                    <h3>📂 Управление разделами</h3>
-                    <div class="form-group">
-                        <label>Название раздела</label>
-                        <input type="text" id="newCategoryName" placeholder="Например: Общие обсуждения" />
+                    <h3>📂 Создать раздел</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Название раздела</label>
+                            <input type="text" id="newCategoryName" placeholder="Например: Общие обсуждения" />
+                        </div>
+                        <div class="form-group">
+                            <label>Описание</label>
+                            <input type="text" id="newCategoryDesc" placeholder="Краткое описание раздела" />
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>Описание раздела</label>
-                        <input type="text" id="newCategoryDesc" placeholder="Краткое описание" />
-                    </div>
-                    <button class="btn btn-success" onclick="addCategory()">➕ Создать раздел</button>
+                    <button class="btn btn-success" onclick="addCategory()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                        Создать раздел
+                    </button>
                 </div>
 
                 <hr class="divider" />
 
-                <!-- Создание темы -->
+                <!-- Create Thread -->
                 <div class="admin-section">
-                    <h3>📝 Управление темами</h3>
+                    <h3>📝 Создать тему</h3>
                     <div class="form-group">
-                        <label>Выберите раздел</label>
+                        <label>Раздел</label>
                         <select id="adminCategorySelect"></select>
                     </div>
                     <div class="form-group">
@@ -176,15 +278,18 @@
                     </div>
                     <div class="form-group">
                         <label>Содержание</label>
-                        <textarea id="newThreadContent" placeholder="Текст темы..."></textarea>
+                        <textarea id="newThreadContent" placeholder="Текст темы..." rows="5"></textarea>
                     </div>
-                    <button class="btn btn-primary" onclick="addThread()">📝 Создать тему</button>
+                    <button class="btn btn-primary" onclick="addThread()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+                        Создать тему
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ===== FIREBASE + SCRIPTS ===== -->
+    <!-- ===== SCRIPTS ===== -->
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="script.js"></script>
 </body>
