@@ -959,7 +959,7 @@ window.logoutUser = async function() {
 };
 
 // ============================================
-// ADMIN
+// ADMIN - ПАРОЛЬ ИЗ FIREBASE (6752)
 // ============================================
 window.verifyAdmin = async function() {
     const password = document.getElementById('adminPassword').value.trim();
@@ -971,9 +971,17 @@ window.verifyAdmin = async function() {
         return;
     }
 
-    if (password === 'ananas') {
-        if (currentUser) {
-            try {
+    try {
+        // 🔐 БЕРЁМ ПАРОЛЬ ИЗ FIREBASE
+        const configDoc = await getDoc(doc(db, 'config', 'admin'));
+        let adminPassword = '6752'; // fallback
+        
+        if (configDoc.exists()) {
+            adminPassword = configDoc.data().password || '6752';
+        }
+
+        if (password === adminPassword) {
+            if (currentUser) {
                 await setDoc(doc(db, 'admins', currentUser.uid), {
                     uid: currentUser.uid,
                     grantedAt: serverTimestamp()
@@ -991,14 +999,40 @@ window.verifyAdmin = async function() {
                 updateAdminCategorySelect();
                 updateAdminCategoryDeleteSelect();
                 showToast('Права администратора получены!', 'success');
-            } catch (error) {
-                showToast('Ошибка: ' + error.message, 'error');
+            } else {
+                showToast('Сначала войдите в аккаунт', 'error');
             }
         } else {
-            showToast('Сначала войдите в аккаунт', 'error');
+            showToast('Неверный код', 'error');
         }
-    } else {
-        showToast('Неверный код', 'error');
+    } catch (error) {
+        console.error('Admin verify error:', error);
+        // fallback: если Firebase недоступен
+        if (password === '6752') {
+            if (currentUser) {
+                await setDoc(doc(db, 'admins', currentUser.uid), {
+                    uid: currentUser.uid,
+                    grantedAt: serverTimestamp()
+                });
+                
+                await updateDoc(doc(db, 'users', currentUser.uid), {
+                    rank: 'admin'
+                });
+                
+                isAdmin = true;
+                userRank = 'admin';
+                document.getElementById('adminActions').style.display = 'block';
+                document.getElementById('adminPassword').value = '';
+                updateUI();
+                updateAdminCategorySelect();
+                updateAdminCategoryDeleteSelect();
+                showToast('Права администратора получены!', 'success');
+            } else {
+                showToast('Сначала войдите в аккаунт', 'error');
+            }
+        } else {
+            showToast('Ошибка проверки: ' + error.message, 'error');
+        }
     }
 };
 
@@ -1013,7 +1047,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================
-// CATEGORIES (только для админов)
+// CATEGORIES
 // ============================================
 window.addCategory = async function() {
     if (!isAdmin) {
@@ -1049,15 +1083,13 @@ window.addCategory = async function() {
 };
 
 // ============================================
-// THREADS (ВСЕ АВТОРИЗОВАННЫЕ МОГУТ СОЗДАВАТЬ)
+// THREADS
 // ============================================
 window.addThread = async function() {
     if (!currentUser) {
         showToast('Войдите в аккаунт', 'error');
         return;
     }
-    
-    // ✅ УБРАЛ ПРОВЕРКУ ПРАВ — теперь все авторизованные могут создавать темы
 
     const categoryId = document.getElementById('adminCategorySelect').value;
     const title = document.getElementById('newThreadTitle').value.trim();
@@ -1172,7 +1204,6 @@ function updateUI() {
         }
         
         userInfo.style.display = 'flex';
-        // ✅ Admin бейдж ТОЛЬКО для owner и admin
         adminBadge.style.display = (userRank === 'admin' || userRank === 'owner') ? 'inline' : 'none';
         loginBtn.style.display = 'none';
         registerBtn.style.display = 'none';
