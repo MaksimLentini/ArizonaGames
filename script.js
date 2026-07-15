@@ -20,7 +20,9 @@ import {
     onSnapshot,
     updateDoc,
     setDoc,
-    serverTimestamp
+    serverTimestamp,
+    arrayUnion,
+    arrayRemove
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const auth = getAuth();
@@ -28,7 +30,72 @@ const db = getFirestore();
 
 let currentUser = null;
 let currentThreadId = null;
+let currentUserData = null;
 let isAdmin = false;
+let userRank = 'player';
+
+// ============================================
+// РАНГИ
+// ============================================
+const RANKS = {
+    owner: {
+        id: 'owner',
+        name: 'Владелец',
+        icon: '👑',
+        level: 5,
+        permissions: ['all']
+    },
+    admin: {
+        id: 'admin',
+        name: 'Администратор',
+        icon: '⚡',
+        level: 4,
+        permissions: ['manage_users', 'manage_ranks', 'delete_threads', 'manage_categories', 'close_threads']
+    },
+    moderator: {
+        id: 'moderator',
+        name: 'Модератор',
+        icon: '🛡️',
+        level: 3,
+        permissions: ['delete_threads', 'close_threads']
+    },
+    leader: {
+        id: 'leader',
+        name: 'Лидер',
+        icon: '⭐',
+        level: 2,
+        permissions: ['create_threads', 'reply_threads']
+    },
+    player: {
+        id: 'player',
+        name: 'Игрок',
+        icon: '🎮',
+        level: 1,
+        permissions: ['create_threads', 'reply_threads', 'view_profiles']
+    },
+    banned: {
+        id: 'banned',
+        name: 'Заблокирован',
+        icon: '🚫',
+        level: 0,
+        permissions: []
+    }
+};
+
+function getRankName(rankId) {
+    return RANKS[rankId] ? RANKS[rankId].name : 'Игрок';
+}
+
+function getRankIcon(rankId) {
+    return RANKS[rankId] ? RANKS[rankId].icon : '🎮';
+}
+
+function hasPermission(permission) {
+    if (userRank === 'owner') return true;
+    const rank = RANKS[userRank];
+    if (!rank) return false;
+    return rank.permissions.includes(permission) || rank.permissions.includes('all');
+}
 
 // ============================================
 // PRELOADER
@@ -39,9 +106,6 @@ window.addEventListener('load', () => {
     }, 800);
 });
 
-// ============================================
-// HEADER SCROLL
-// ============================================
 window.addEventListener('scroll', () => {
     const header = document.getElementById('mainHeader');
     if (window.scrollY > 50) {
@@ -52,28 +116,71 @@ window.addEventListener('scroll', () => {
 });
 
 // ============================================
-// AUTH STATE
+// AUTH
 // ============================================
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUser = user;
-        checkAdminStatus(user.uid);
+        await loadUserData(user.uid);
+        await checkAdminStatus(user.uid);
         updateUI();
         loadStats();
         renderCategories();
-        loadUserProfile(user.uid);
     } else {
         currentUser = null;
+        currentUserData = null;
         isAdmin = false;
+        userRank = 'player';
         updateUI();
         renderCategories();
     }
 });
 
+async function loadUserData(uid) {
+    try {
+        const userDoc = await getDoc(doc(db, 'users', uid));
+        if (userDoc.exists()) {
+            currentUserData = userDoc.data();
+            userRank = currentUserData.rank || 'player';
+        } else {
+            await setDoc(doc(db, 'users', uid), {
+                username: currentUser.email.split('@')[0],
+                email: currentUser.email,
+                bio: 'Новый игрок',
+                avatar: '',
+                rank: 'player',
+                createdAt: serverTimestamp(),
+                uid: uid,
+                postsCount: 0,
+                threadsCount: 0,
+                reputation: 0,
+                followers: [],
+                following: []
+            });
+            currentUserData = {
+                username: currentUser.email.split('@')[0],
+                email: currentUser.email,
+                bio: 'Новый игрок',
+                avatar: '',
+                rank: 'player',
+                followers: [],
+                following: []
+            };
+            userRank = 'player';
+        }
+    } catch (error) {
+        console.error('Load user data error:', error);
+    }
+}
+
 async function checkAdminStatus(uid) {
     try {
         const adminDoc = await getDoc(doc(db, 'admins', uid));
         isAdmin = adminDoc.exists();
+        if (isAdmin && userRank !== 'owner' && userRank !== 'admin') {
+            await updateDoc(doc(db, 'users', uid), { rank: 'admin' });
+            userRank = 'admin';
+        }
         updateUI();
     } catch (error) {
         console.error('Admin check error:', error);
@@ -82,30 +189,57 @@ async function checkAdminStatus(uid) {
 }
 
 // ============================================
-// PROFILE FUNCTIONS
+// ПОДПИСКИ
 // ============================================
-
-let currentProfileData = {};
-
-async function loadUserProfile(uid) {
-    try {
-        const userDoc = await getDoc(doc(db, 'users', uid));
-        if (userDoc.exists()) {
-            currentProfileData = userDoc.data();
-            updateUI();
-        }
-    } catch (error) {
-        console.error('Profile load error:', error);
+window.toggleFollow = async function(targetUid) {
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
+        return;
     }
-}
+    if (targetUid === currentUser.uid) {
+        showToast('Нельзя подписаться на себя', 'warning');
+        return;
+    }
 
-window.openProfile = function(e) {
+    try {
+        const userRef = doc(db, 'users', currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        const userData = userSnap.data();
+        const following = userData.following || [];
+
+        const targetRef = doc(db, 'users', targetUid);
+        const targetSnap = await getDoc(targetRef);
+        const targetData = targetSnap.data();
+        const followers = targetData.followers || [];
+
+        if (following.includes(targetUid)) {
+            await updateDoc(userRef, { following: arrayRemove(targetUid) });
+            await updateDoc(targetRef, { followers: arrayRemove(currentUser.uid) });
+            showToast('Вы отписались', 'warning');
+        } else {
+            await updateDoc(userRef, { following: arrayUnion(targetUid) });
+            await updateDoc(targetRef, { followers: arrayUnion(currentUser.uid) });
+            showToast('Вы подписались!', 'success');
+        }
+        openProfile(null, targetUid);
+    } catch (error) {
+        showToast('Ошибка: ' + error.message, 'error');
+    }
+};
+
+// ============================================
+// ПРОФИЛЬ С ГОСТЕВОЙ КНИГОЙ
+// ============================================
+window.openProfile = async function(e, userId = null) {
     if (e) e.stopPropagation();
     
     if (!currentUser) {
         showToast('Войдите в аккаунт', 'error');
         return;
     }
+    
+    const targetUid = userId || currentUser.uid;
+    const isOwnProfile = targetUid === currentUser.uid;
     
     const forumView = document.getElementById('forumView');
     const profileView = document.getElementById('profileView');
@@ -115,14 +249,69 @@ window.openProfile = function(e) {
     document.getElementById('pageView').style.display = 'none';
     profileView.style.display = 'block';
     
-    getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
-        const data = docSnap.exists() ? docSnap.data() : {};
+    try {
+        const userDoc = await getDoc(doc(db, 'users', targetUid));
+        if (!userDoc.exists()) {
+            container.innerHTML = `<div class="empty-state"><span class="empty-icon">⚠️</span><p>Пользователь не найден</p></div>`;
+            return;
+        }
         
+        const data = userDoc.data();
         const avatarUrl = data.avatar || '';
-        const username = data.username || currentUser.email;
+        const username = data.username || 'Неизвестно';
         const bio = data.bio || 'Пользователь пока ничего не рассказал о себе';
         const createdAt = data.createdAt ? formatDate(data.createdAt) : 'Неизвестно';
-        
+        const rank = data.rank || 'player';
+        const rankDisplay = getRankName(rank);
+        const rankIcon = getRankIcon(rank);
+        const isAdminUser = rank === 'admin' || rank === 'owner';
+        const followers = data.followers || [];
+        const following = data.following || [];
+        const isFollowing = followers.includes(currentUser.uid);
+
+        // Получаем записи в гостевой книге
+        const postsQuery = query(
+            collection(db, 'profile_posts'),
+            where('toUid', '==', targetUid),
+            orderBy('createdAt', 'desc')
+        );
+        const postsSnapshot = await getDocs(postsQuery);
+        const profilePosts = [];
+        postsSnapshot.forEach(doc => {
+            profilePosts.push({ id: doc.id, ...doc.data() });
+        });
+
+        let postsHtml = `
+            <div class="profile-posts">
+                <div class="profile-posts-header">
+                    <h4>📝 Записи в профиле (${profilePosts.length})</h4>
+                    ${!isOwnProfile ? `
+                        <form onsubmit="event.preventDefault(); addProfilePost('${targetUid}');">
+                            <div class="profile-post-input">
+                                <input type="text" id="profilePostInput" placeholder="Написать запись..." />
+                                <button type="submit" class="btn btn-primary btn-sm">📤</button>
+                            </div>
+                        </form>
+                    ` : ''}
+                </div>
+                ${profilePosts.length === 0 ? 
+                    `<div class="empty-state" style="padding:20px 0;font-size:14px;">Нет записей в профиле</div>` :
+                    profilePosts.map(post => `
+                        <div class="profile-post-item">
+                            <div class="profile-post-head">
+                                <div class="profile-post-author">
+                                    <span class="profile-post-author-name">${post.fromName}</span>
+                                    <span class="profile-post-rank">${getRankName(post.fromRank || 'player')}</span>
+                                </div>
+                                <span class="profile-post-date">${formatDate(post.createdAt)}</span>
+                            </div>
+                            <div class="profile-post-content">${post.content}</div>
+                        </div>
+                    `).join('')
+                }
+            </div>
+        `;
+
         container.innerHTML = `
             <div class="profile-card">
                 <div class="profile-header">
@@ -134,17 +323,36 @@ window.openProfile = function(e) {
                         <div class="profile-avatar-letter" ${avatarUrl ? 'style="display:none;"' : ''}>
                             ${username[0].toUpperCase()}
                         </div>
-                        <button class="btn btn-outline btn-sm profile-edit-btn" onclick="openProfileEdit()">
-                            ✏️ Редактировать
-                        </button>
+                        <div class="profile-rank-badge ${isAdminUser ? 'rank-admin' : 'rank-player'}">
+                            ${rankIcon} ${rankDisplay}
+                        </div>
+                        <div class="profile-follow-stats">
+                            <span>👥 ${followers.length} подписчиков</span>
+                            <span>📌 ${following.length} подписок</span>
+                        </div>
+                        ${!isOwnProfile ? `
+                            <button class="btn ${isFollowing ? 'btn-outline' : 'btn-primary'} btn-sm" onclick="toggleFollow('${targetUid}')">
+                                ${isFollowing ? '❌ Отписаться' : '➕ Подписаться'}
+                            </button>
+                        ` : ''}
+                        ${isOwnProfile ? `
+                            <button class="btn btn-outline btn-sm profile-edit-btn" onclick="openProfileEdit()">
+                                ✏️ Редактировать
+                            </button>
+                        ` : ''}
+                        ${isAdmin ? `
+                            <button class="btn btn-admin btn-sm" onclick="openRankModal('${targetUid}', '${username}', '${rank}')">
+                                ⚡ Ранг
+                            </button>
+                        ` : ''}
                     </div>
                     <div class="profile-info">
                         <h1 class="profile-name">${username}</h1>
+                        <div class="profile-rank">${rankIcon} ${rankDisplay}</div>
                         <div class="profile-bio">${bio}</div>
                         <div class="profile-meta">
                             <span>📅 Присоединился: ${createdAt}</span>
-                            ${isAdmin ? '<span class="role-badge" style="display:inline-block;">👑 Администратор</span>' : ''}
-                            <span>📧 ${currentUser.email}</span>
+                            ${isAdminUser ? '<span class="role-badge">Администратор</span>' : ''}
                         </div>
                     </div>
                 </div>
@@ -162,14 +370,53 @@ window.openProfile = function(e) {
                         <span class="profile-stat-label">Репутация</span>
                     </div>
                 </div>
+                ${postsHtml}
             </div>
         `;
-    }).catch(error => {
+    } catch (error) {
         console.error('Profile render error:', error);
         container.innerHTML = `<div class="empty-state"><span class="empty-icon">⚠️</span><p>Ошибка загрузки профиля</p></div>`;
-    });
+    }
 };
 
+// ============================================
+// ДОБАВЛЕНИЕ ЗАПИСИ В ПРОФИЛЬ
+// ============================================
+window.addProfilePost = async function(toUid) {
+    const input = document.getElementById('profilePostInput');
+    const content = input.value.trim();
+    
+    if (!content) {
+        showToast('Введите текст записи', 'error');
+        return;
+    }
+    
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
+        return;
+    }
+
+    try {
+        await addDoc(collection(db, 'profile_posts'), {
+            toUid: toUid,
+            fromUid: currentUser.uid,
+            fromName: currentUserData?.username || currentUser.email,
+            fromRank: currentUserData?.rank || 'player',
+            content: content,
+            createdAt: serverTimestamp()
+        });
+        
+        input.value = '';
+        showToast('Запись добавлена!', 'success');
+        openProfile(null, toUid);
+    } catch (error) {
+        showToast('Ошибка: ' + error.message, 'error');
+    }
+};
+
+// ============================================
+// РЕДАКТИРОВАНИЕ ПРОФИЛЯ
+// ============================================
 window.openProfileEdit = function() {
     if (!currentUser) {
         showToast('Войдите в аккаунт', 'error');
@@ -208,7 +455,6 @@ window.saveProfile = async function() {
             updatedAt: serverTimestamp()
         });
         
-        currentProfileData = { username, bio, avatar };
         closeModal('profileEditModal');
         showToast('Профиль обновлён!', 'success');
         updateUI();
@@ -225,7 +471,61 @@ window.closeProfile = function() {
 };
 
 // ============================================
-// AUTH FUNCTIONS
+// УПРАВЛЕНИЕ РАНГАМИ
+// ============================================
+window.openRankModal = function(uid, username, currentRank) {
+    if (!isAdmin) {
+        showToast('Только администраторы могут менять ранги', 'error');
+        return;
+    }
+    
+    document.getElementById('rankTargetUid').value = uid;
+    document.getElementById('rankTargetName').textContent = username;
+    
+    const select = document.getElementById('rankSelect');
+    select.innerHTML = '';
+    const rankOptions = ['player', 'leader', 'moderator', 'admin'];
+    if (userRank === 'owner') {
+        rankOptions.push('owner');
+    }
+    
+    rankOptions.forEach(r => {
+        const option = document.createElement('option');
+        option.value = r;
+        option.textContent = getRankName(r);
+        if (r === currentRank) option.selected = true;
+        select.appendChild(option);
+    });
+    
+    openModal('rankModal');
+};
+
+window.setUserRank = async function() {
+    const uid = document.getElementById('rankTargetUid').value;
+    const newRank = document.getElementById('rankSelect').value;
+    
+    if (!isAdmin) {
+        showToast('Только администраторы могут менять ранги', 'error');
+        return;
+    }
+    
+    if (newRank === 'owner' && userRank !== 'owner') {
+        showToast('Только владелец может назначить владельца', 'error');
+        return;
+    }
+    
+    try {
+        await updateDoc(doc(db, 'users', uid), { rank: newRank });
+        closeModal('rankModal');
+        showToast('Ранг изменён!', 'success');
+        openProfile(null, uid);
+    } catch (error) {
+        showToast('Ошибка: ' + error.message, 'error');
+    }
+};
+
+// ============================================
+// AUTH
 // ============================================
 window.registerUser = async function() {
     const username = document.getElementById('regUsername').value.trim();
@@ -260,13 +560,16 @@ window.registerUser = async function() {
         await setDoc(doc(db, 'users', user.uid), {
             username: username,
             email: email,
-            bio: 'Пользователь пока ничего не рассказал о себе',
+            bio: 'Новый игрок',
             avatar: '',
+            rank: 'player',
             createdAt: serverTimestamp(),
             uid: user.uid,
             postsCount: 0,
             threadsCount: 0,
-            reputation: 0
+            reputation: 0,
+            followers: [],
+            following: []
         });
 
         closeModal('registerModal');
@@ -326,7 +629,7 @@ window.logoutUser = async function() {
 };
 
 // ============================================
-// ADMIN FUNCTIONS
+// ADMIN (БЕЗ ПОДСКАЗОК ПРО ПАРОЛЬ)
 // ============================================
 window.verifyAdmin = async function() {
     const password = document.getElementById('adminPassword').value.trim();
@@ -334,11 +637,23 @@ window.verifyAdmin = async function() {
     if (password === '1267') {
         if (currentUser) {
             try {
+                const adminDoc = await getDoc(doc(db, 'admins', currentUser.uid));
+                if (adminDoc.exists()) {
+                    showToast('Вы уже администратор', 'warning');
+                    return;
+                }
+                
                 await setDoc(doc(db, 'admins', currentUser.uid), {
                     uid: currentUser.uid,
                     grantedAt: serverTimestamp()
                 });
+                
+                await updateDoc(doc(db, 'users', currentUser.uid), {
+                    rank: 'admin'
+                });
+                
                 isAdmin = true;
+                userRank = 'admin';
                 document.getElementById('adminActions').style.display = 'block';
                 document.getElementById('adminPassword').value = '';
                 updateUI();
@@ -356,7 +671,7 @@ window.verifyAdmin = async function() {
 };
 
 // ============================================
-// CATEGORY FUNCTIONS
+// CATEGORIES
 // ============================================
 window.addCategory = async function() {
     if (!isAdmin) {
@@ -391,11 +706,16 @@ window.addCategory = async function() {
 };
 
 // ============================================
-// THREAD FUNCTIONS
+// THREADS
 // ============================================
 window.addThread = async function() {
     if (!currentUser) {
         showToast('Войдите в аккаунт', 'error');
+        return;
+    }
+    
+    if (!hasPermission('create_threads')) {
+        showToast('У вас нет прав на создание тем', 'error');
         return;
     }
 
@@ -409,18 +729,17 @@ window.addThread = async function() {
     }
 
     try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        const username = userDoc.exists() ? userDoc.data().username : currentUser.email;
-
         await addDoc(collection(db, 'threads'), {
             categoryId: categoryId,
             title: title,
             content: content,
-            author: username,
+            author: currentUserData?.username || currentUser.email,
             authorId: currentUser.uid,
+            authorRank: userRank,
             createdAt: serverTimestamp(),
             views: 0,
-            replies: 0
+            replies: 0,
+            closed: false
         });
 
         const userRef = doc(db, 'users', currentUser.uid);
@@ -442,8 +761,8 @@ window.addThread = async function() {
 };
 
 window.deleteThread = async function(threadId) {
-    if (!isAdmin) {
-        showToast('Требуются права администратора', 'error');
+    if (!hasPermission('delete_threads')) {
+        showToast('У вас нет прав на удаление тем', 'error');
         return;
     }
 
@@ -462,8 +781,30 @@ window.deleteThread = async function(threadId) {
     }
 };
 
+window.closeThread = async function(threadId) {
+    if (!hasPermission('close_threads')) {
+        showToast('У вас нет прав на закрытие тем', 'error');
+        return;
+    }
+
+    try {
+        const threadRef = doc(db, 'threads', threadId);
+        const threadDoc = await getDoc(threadRef);
+        if (threadDoc.exists()) {
+            const data = threadDoc.data();
+            await updateDoc(threadRef, {
+                closed: !data.closed
+            });
+            showToast(data.closed ? 'Тема открыта!' : 'Тема закрыта!', 'success');
+            openThread(threadId);
+        }
+    } catch (error) {
+        showToast('Ошибка: ' + error.message, 'error');
+    }
+};
+
 // ============================================
-// RENDER FUNCTIONS
+// RENDER
 // ============================================
 function updateUI() {
     const userInfo = document.getElementById('userInfo');
@@ -477,22 +818,19 @@ function updateUI() {
     const adminPanelBtn = document.getElementById('adminPanelBtn');
 
     if (currentUser) {
-        getDoc(doc(db, 'users', currentUser.uid)).then(docSnap => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                userName.textContent = data.username || currentUser.email;
-                
-                if (data.avatar) {
-                    avatarImg.src = data.avatar;
-                    avatarImg.style.display = 'block';
-                    avatarLetter.style.display = 'none';
-                } else {
-                    avatarImg.style.display = 'none';
-                    avatarLetter.style.display = 'flex';
-                    avatarLetter.textContent = (data.username || currentUser.email)[0].toUpperCase();
-                }
-            }
-        });
+        const displayName = currentUserData?.username || currentUser.email;
+        userName.textContent = displayName;
+        
+        if (currentUserData?.avatar) {
+            avatarImg.src = currentUserData.avatar;
+            avatarImg.style.display = 'block';
+            avatarLetter.style.display = 'none';
+        } else {
+            avatarImg.style.display = 'none';
+            avatarLetter.style.display = 'flex';
+            avatarLetter.textContent = displayName[0].toUpperCase();
+        }
+        
         userInfo.style.display = 'flex';
         adminBadge.style.display = isAdmin ? 'inline' : 'none';
         loginBtn.style.display = 'none';
@@ -528,8 +866,6 @@ async function renderCategories() {
                     <div class="empty-state">
                         <span class="empty-icon">📋</span>
                         <p>Нет созданных разделов</p>
-                        ${isAdmin ? '<p style="color: var(--primary-light); font-size: 13px;">Используйте админ-панель для создания разделов</p>' : ''}
-                        <p style="color: var(--text-muted); font-size: 12px; margin-top: 8px;">Войдите как администратор (пароль 1267) чтобы создать раздел</p>
                     </div>
                 </div>
             `;
@@ -556,24 +892,33 @@ async function renderCategories() {
                     ${categoryThreads.length === 0 ? 
                         `<div class="empty-state" style="padding:16px 0;font-size:14px;">В этом разделе пока нет тем</div>` :
                         `<ul class="topic-list">
-                            ${categoryThreads.map(thread => `
-                                <li class="topic-item" onclick="openThread('${thread.id}')">
-                                    <div class="topic-info">
-                                        <h5>${thread.title}</h5>
-                                        <div class="topic-meta">
-                                            <span>Автор: ${thread.author}</span>
-                                            <span>${formatDate(thread.createdAt)}</span>
-                                            <span>👁 ${thread.views || 0}</span>
-                                            <span>💬 ${thread.replies || 0}</span>
+                            ${categoryThreads.map(thread => {
+                                const isClosed = thread.closed || false;
+                                return `
+                                    <li class="topic-item ${isClosed ? 'topic-closed' : ''}" onclick="openThread('${thread.id}')">
+                                        <div class="topic-info">
+                                            <h5>${isClosed ? '🔒 ' : ''}${thread.title}</h5>
+                                            <div class="topic-meta">
+                                                <span>${getRankIcon(thread.authorRank || 'player')} ${thread.author}</span>
+                                                <span>${getRankName(thread.authorRank || 'player')}</span>
+                                                <span>📅 ${formatDate(thread.createdAt)}</span>
+                                                <span>👁 ${thread.views || 0}</span>
+                                                <span>💬 ${thread.replies || 0}</span>
+                                                ${isClosed ? '<span style="color:var(--danger);">Закрыта</span>' : ''}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="topic-actions">
-                                        ${isAdmin ? `
-                                            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteThread('${thread.id}')">Удалить</button>
-                                        ` : ''}
-                                    </div>
-                                </li>
-                            `).join('')}
+                                        <div class="topic-actions">
+                                            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openProfile(event, '${thread.authorId}')">👤</button>
+                                            ${isAdmin ? `
+                                                <button class="btn btn-warning btn-sm" onclick="event.stopPropagation(); closeThread('${thread.id}')">
+                                                    ${isClosed ? '🔓 Открыть' : '🔒 Закрыть'}
+                                                </button>
+                                                <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteThread('${thread.id}')">🗑️</button>
+                                            ` : ''}
+                                        </div>
+                                    </li>
+                                `;
+                            }).join('')}
                         </ul>`
                     }
                 </div>
@@ -597,7 +942,15 @@ async function renderCategories() {
     }
 }
 
+// ============================================
+// OPEN THREAD
+// ============================================
 window.openThread = async function(threadId) {
+    if (!threadId) {
+        showToast('Ошибка: ID темы не указан', 'error');
+        return;
+    }
+    
     currentThreadId = threadId;
     const container = document.getElementById('threadContainer');
     const threadView = document.getElementById('threadView');
@@ -608,21 +961,23 @@ window.openThread = async function(threadId) {
     container.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Загрузка темы...</p></div>';
 
     try {
-        const threadDoc = await getDoc(doc(db, 'threads', threadId));
+        const threadRef = doc(db, 'threads', threadId);
+        const threadDoc = await getDoc(threadRef);
+        
         if (!threadDoc.exists()) {
             showToast('Тема не найдена', 'error');
             showCategoriesView();
             return;
         }
+        
         const thread = { id: threadDoc.id, ...threadDoc.data() };
+        const isClosed = thread.closed || false;
 
         try {
-            await updateDoc(doc(db, 'threads', threadId), {
+            await updateDoc(threadRef, {
                 views: (thread.views || 0) + 1
             });
-        } catch (e) {
-            console.log('Views update skipped');
-        }
+        } catch (e) {}
 
         const postsQuery = query(
             collection(db, 'posts'),
@@ -636,20 +991,32 @@ window.openThread = async function(threadId) {
         });
 
         container.innerHTML = `
-            <div class="thread-detail">
-                <h2>${thread.title}</h2>
-                <div class="thread-meta">
-                    <span>Автор: ${thread.author}</span>
-                    <span>${formatDate(thread.createdAt)}</span>
-                    <span>👁 ${(thread.views || 0) + 1}</span>
-                    <span>💬 ${posts.length}</span>
+            <div class="thread-detail ${isClosed ? 'thread-closed' : ''}">
+                <div class="thread-header">
+                    <h2>${isClosed ? '🔒 ' : ''}${thread.title || 'Без названия'}</h2>
+                    <div class="thread-meta">
+                        <span>${getRankIcon(thread.authorRank || 'player')} ${thread.author || 'Неизвестен'}</span>
+                        <span>${getRankName(thread.authorRank || 'player')}</span>
+                        <span>📅 ${formatDate(thread.createdAt)}</span>
+                        <span>👁 ${(thread.views || 0) + 1}</span>
+                        <span>💬 ${posts.length}</span>
+                        ${isClosed ? '<span style="color:var(--danger);font-weight:700;">🔒 Тема закрыта</span>' : ''}
+                    </div>
                 </div>
-                <div class="thread-body">${thread.content}</div>
+                <div class="thread-body">${thread.content || 'Содержание отсутствует'}</div>
+                <div class="thread-admin-actions">
+                    <button class="btn btn-outline btn-sm" onclick="openProfile(event, '${thread.authorId}')">👤 Профиль автора</button>
+                    ${isAdmin ? `
+                        <button class="btn btn-warning btn-sm" onclick="closeThread('${threadId}')">
+                            ${isClosed ? '🔓 Открыть' : '🔒 Закрыть'}
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteThread('${threadId}')">🗑️ Удалить</button>
+                    ` : ''}
+                </div>
             </div>
             
             <div class="posts-header">
-                <h3>Ответы</h3>
-                <span class="posts-count">${posts.length} сообщений</span>
+                <h3>💬 Ответы (${posts.length})</h3>
             </div>
             
             <div id="postsContainer">
@@ -658,30 +1025,48 @@ window.openThread = async function(threadId) {
                     posts.map(post => `
                         <div class="post-item">
                             <div class="post-head">
-                                <span class="post-author">${post.author}</span>
-                                <span class="post-date">${formatDate(post.createdAt)}</span>
+                                <div class="post-author-info">
+                                    <span class="post-author">${getRankIcon(post.authorRank || 'player')} ${post.author || 'Неизвестен'}</span>
+                                    <span class="post-rank">${getRankName(post.authorRank || 'player')}</span>
+                                </div>
+                                <div class="post-actions">
+                                    <button class="btn btn-outline btn-sm" onclick="openProfile(event, '${post.authorId}')">👤</button>
+                                    <span class="post-date">${formatDate(post.createdAt)}</span>
+                                </div>
                             </div>
-                            <div class="post-content">${post.content}</div>
+                            <div class="post-content">${post.content || ''}</div>
                         </div>
                     `).join('')
                 }
             </div>
             
             ${currentUser ? `
-                <div class="reply-section">
-                    <h4>Написать ответ</h4>
-                    <textarea id="newPostContent" placeholder="Введите текст..."></textarea>
-                    <button class="btn btn-primary" onclick="addPost('${threadId}')">Отправить</button>
-                </div>
+                ${isClosed ? `
+                    <div style="margin-top:20px;padding:20px;background:var(--dark-card);border-radius:var(--radius);text-align:center;border:1px solid var(--danger);">
+                        <p style="color:var(--danger);">🔒 Эта тема закрыта для ответов</p>
+                    </div>
+                ` : `
+                    <div class="reply-section">
+                        <h4>✏️ Написать ответ</h4>
+                        <textarea id="newPostContent" placeholder="Введите текст..."></textarea>
+                        <button class="btn btn-primary" onclick="addPost('${threadId}')">📤 Отправить</button>
+                    </div>
+                `}
             ` : `
                 <div style="margin-top:20px;padding:20px;background:var(--dark-card);border-radius:var(--radius);text-align:center;border:1px solid var(--border);">
-                    <p style="color:var(--text-muted);">Войдите в аккаунт, чтобы ответить</p>
+                    <p style="color:var(--text-muted);">🔑 Войдите в аккаунт, чтобы ответить</p>
                 </div>
             `}
         `;
     } catch (error) {
         console.error('Open thread error:', error);
-        container.innerHTML = `<div class="empty-state"><span class="empty-icon">⚠️</span><p>Ошибка загрузки темы</p></div>`;
+        container.innerHTML = `
+            <div class="empty-state">
+                <span class="empty-icon">⚠️</span>
+                <p>Ошибка загрузки темы: ${error.message}</p>
+                <button class="btn btn-primary" onclick="showCategoriesView()" style="margin-top: 12px;">← Назад</button>
+            </div>
+        `;
     }
 };
 
@@ -698,13 +1083,11 @@ window.addPost = async function(threadId) {
     }
 
     try {
-        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        const username = userDoc.exists() ? userDoc.data().username : currentUser.email;
-
         await addDoc(collection(db, 'posts'), {
             threadId: threadId,
-            author: username,
+            author: currentUserData?.username || currentUser.email,
             authorId: currentUser.uid,
+            authorRank: userRank,
             content: content,
             createdAt: serverTimestamp()
         });
@@ -726,9 +1109,7 @@ window.addPost = async function(threadId) {
                     replies: (thread.replies || 0) + 1
                 });
             }
-        } catch (e) {
-            console.log('Replies update skipped');
-        }
+        } catch (e) {}
 
         document.getElementById('newPostContent').value = '';
         showToast('Ответ отправлен!', 'success');
@@ -797,8 +1178,14 @@ function formatDate(dateStr) {
     try {
         const date = dateStr.toDate ? dateStr.toDate() : new Date(dateStr);
         if (isNaN(date.getTime())) return 'Неизвестно';
-        return date.toLocaleDateString('ru-RU', { month: 'short', day: 'numeric', year: 'numeric' }) + 
-               ' ' + date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleDateString('ru-RU', { 
+            day: 'numeric', 
+            month: 'short', 
+            year: 'numeric' 
+        }) + ' ' + date.toLocaleTimeString('ru-RU', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
     } catch {
         return 'Неизвестно';
     }
@@ -857,7 +1244,7 @@ window.switchModal = function(closeId, openId) {
 };
 
 // ============================================
-// PAGE FUNCTIONS
+// PAGES
 // ============================================
 window.showPage = function(page) {
     const forumView = document.getElementById('forumView');
@@ -870,11 +1257,11 @@ window.showPage = function(page) {
     const pages = {
         rules: {
             title: '📜 Правила сообщества',
-            subtitle: 'Основные правила поведения на форуме Arizona RP',
+            subtitle: 'Основные правила поведения на форуме',
             sections: [
                 { title: '1. Уважение к участникам', content: 'Относитесь с уважением ко всем участникам сообщества. Запрещены: оскорбления, угрозы, дискриминация, травля.' },
                 { title: '2. Запрещенный контент', content: 'Запрещена публикация: порнографического контента, материалов, пропагандирующих насилие, спама, рекламы без разрешения.' },
-                { title: '3. Правила общения', content: 'Общайтесь на русском языке в основных разделах. Используйте понятные заголовки для тем. Не создавайте дублирующиеся темы.' }
+                { title: '3. Правила общения', content: 'Общайтесь на русском языке в основных разделах. Используйте понятные заголовки для тем.' }
             ]
         },
         help: {
@@ -882,8 +1269,8 @@ window.showPage = function(page) {
             subtitle: 'Часто задаваемые вопросы',
             sections: [
                 { title: 'Как зарегистрироваться?', content: 'Нажмите на кнопку "Регистрация" в правом верхнем углу, заполните форму.' },
-                { title: 'Как создать тему?', content: 'Получите права администратора (пароль 1267). Затем в админ-панели создайте тему.' },
-                { title: 'Как получить права администратора?', content: 'Нажмите на кнопку "Админ" и введите пароль 1267.' }
+                { title: 'Как создать тему?', content: 'Войдите в аккаунт и используйте админ-панель.' },
+                { title: 'Как получить права администратора?', content: 'Обратитесь к действующему администратору.' }
             ]
         },
         contact: {
@@ -951,7 +1338,7 @@ window.closePage = function() {
 };
 
 // ============================================
-// REAL-TIME UPDATES
+// REAL-TIME
 // ============================================
 try {
     onSnapshot(collection(db, 'categories'), () => {
@@ -966,9 +1353,7 @@ try {
             }
         }
     });
-} catch (e) {
-    console.log('Categories listener error:', e);
-}
+} catch (e) {}
 
 try {
     onSnapshot(collection(db, 'threads'), () => {
@@ -983,12 +1368,10 @@ try {
             }
         }
     });
-} catch (e) {
-    console.log('Threads listener error:', e);
-}
+} catch (e) {}
 
 // ============================================
-// ONLINE COUNT
+// ONLINE
 // ============================================
 setInterval(() => {
     const online = document.getElementById('heroOnline');
@@ -1002,9 +1385,5 @@ window.refreshForum = function() {
     renderCategories();
 };
 
-console.log('🚀 Arizona RP Форум загружен!');
-
-// ПЕРВЫЙ ЗАПУСК
-setTimeout(() => {
-    renderCategories();
-}, 500);
+console.log('🚀 Arizona RP Forum loaded!');
+setTimeout(() => { renderCategories(); }, 500);

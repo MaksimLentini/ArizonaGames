@@ -88,11 +88,11 @@
                 <div id="forumView">
                     <div id="categoriesView">
                         <div class="section-toolbar">
-                            <h3>📂 Разделы форума</h3>
+                            <h3>Разделы форума</h3>
                             <span class="section-counter" id="categoriesCount">0 разделов</span>
                             <div style="display:flex;gap:8px;">
-                                <button class="btn btn-admin btn-sm" onclick="openModal('adminModal')">⚡ Админ</button>
-                                <button class="btn btn-success btn-sm" onclick="refreshForum()">🔄 Обновить</button>
+                                <button class="btn btn-admin btn-sm" onclick="openModal('adminModal')">Админ</button>
+                                <button class="btn btn-success btn-sm" onclick="refreshForum()">Обновить</button>
                             </div>
                         </div>
                         <div id="categoriesContainer">
@@ -138,7 +138,7 @@
                         <a href="#" onclick="showPage('privacy'); return false;">Конфиденциальность</a>
                     </div>
                     <div class="footer-copy">
-                        <p>&copy; 2024 Arizona RP. Все права защищены.</p>
+                        <p>&copy; 2025 Arizona RP. Все права защищены.</p>
                     </div>
                 </div>
             </div>
@@ -222,7 +222,7 @@
         </div>
     </div>
 
-    <!-- ADMIN MODAL -->
+    <!-- ADMIN MODAL (БЕЗ ПОДСКАЗКИ ПРО ПАРОЛЬ) -->
     <div class="modal" id="adminModal">
         <div class="modal-overlay" onclick="closeModal('adminModal')"></div>
         <div class="modal-box modal-large">
@@ -237,7 +237,7 @@
                 <div class="field-group">
                     <label>Код доступа администратора</label>
                     <div class="field-password">
-                        <input type="password" id="adminPassword" placeholder="Введите код 1267" />
+                        <input type="password" id="adminPassword" placeholder="Введите код" />
                         <button type="button" class="field-toggle" onclick="togglePassword('adminPassword', this)">Показать</button>
                     </div>
                 </div>
@@ -310,6 +310,46 @@
                 </div>
                 <button type="submit" class="btn btn-primary btn-block">Сохранить изменения</button>
             </form>
+        </div>
+    </div>
+
+    <!-- MESSAGE MODAL (ОСТАВЛЯЮ ДЛЯ ЛИЧНЫХ СООБЩЕНИЙ, НО ОНИ НЕ ИСПОЛЬЗУЮТСЯ) -->
+    <div class="modal" id="messageModal">
+        <div class="modal-overlay" onclick="closeModal('messageModal')"></div>
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal('messageModal')">×</button>
+            <div class="modal-head">
+                <div class="modal-icon">💬</div>
+                <h2>Личное сообщение</h2>
+                <p>Пользователю: <span id="msgToName" style="color:var(--primary-light);font-weight:700;"></span></p>
+            </div>
+            <form id="messageForm" onsubmit="event.preventDefault(); sendMessage();">
+                <input type="hidden" id="msgToUid" />
+                <div class="field-group">
+                    <label>Текст сообщения</label>
+                    <textarea id="msgContent" placeholder="Введите ваше сообщение..." rows="4" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">📤 Отправить</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- RANK MODAL -->
+    <div class="modal" id="rankModal">
+        <div class="modal-overlay" onclick="closeModal('rankModal')"></div>
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal('rankModal')">×</button>
+            <div class="modal-head">
+                <div class="modal-icon">⚡</div>
+                <h2>Управление рангом</h2>
+                <p>Пользователь: <span id="rankTargetName" style="color:var(--primary-light);font-weight:700;"></span></p>
+            </div>
+            <input type="hidden" id="rankTargetUid" />
+            <div class="field-group">
+                <label>Выберите ранг</label>
+                <select id="rankSelect"></select>
+            </div>
+            <button class="btn btn-admin btn-block" onclick="setUserRank()">💾 Сохранить ранг</button>
         </div>
     </div>
 
