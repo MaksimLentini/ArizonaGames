@@ -3,12 +3,21 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Arizona RolePlay Forum</title>
+    <title>Arizona RolePlay Форум</title>
     <link rel="stylesheet" href="style.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
 </head>
 <body>
     <div id="app">
+        <!-- PRELOADER -->
+        <div class="preloader" id="preloader">
+            <div class="preloader-content">
+                <div class="preloader-ring"></div>
+                <div class="preloader-logo">AZ</div>
+                <p>Загрузка форума...</p>
+            </div>
+        </div>
+
         <!-- HEADER -->
         <header class="header" id="mainHeader">
             <div class="container header-content">
@@ -16,22 +25,22 @@
                     <div class="brand-icon">AZ</div>
                     <div class="brand-text">
                         <h1>Arizona <span>RP</span></h1>
-                        <span class="brand-sub">RolePlay Community</span>
+                        <span class="brand-sub">RolePlay Сообщество</span>
                     </div>
                 </div>
                 <div class="user-panel" id="userPanel">
                     <div class="user-profile" id="userInfo" style="display:none;">
                         <div class="user-avatar" id="userAvatar">U</div>
                         <div class="user-data">
-                            <span class="user-name" id="currentUser">User</span>
-                            <span class="user-status active">● Online</span>
+                            <span class="user-name" id="currentUser">Пользователь</span>
+                            <span class="user-status active">● Онлайн</span>
                         </div>
-                        <span class="role-badge" id="adminBadge" style="display:none;">Admin</span>
+                        <span class="role-badge" id="adminBadge" style="display:none;">Админ</span>
                     </div>
-                    <button class="btn btn-primary" id="loginBtn" onclick="openModal('loginModal')">Sign In</button>
-                    <button class="btn btn-outline" id="registerBtn" onclick="openModal('registerModal')">Register</button>
-                    <button class="btn btn-danger" id="logoutBtn" style="display:none;" onclick="logoutUser()">Logout</button>
-                    <button class="btn btn-admin" id="adminPanelBtn" style="display:none;" onclick="openModal('adminModal')">Admin</button>
+                    <button class="btn btn-primary" id="loginBtn" onclick="openModal('loginModal')">Войти</button>
+                    <button class="btn btn-outline" id="registerBtn" onclick="openModal('registerModal')">Регистрация</button>
+                    <button class="btn btn-danger" id="logoutBtn" style="display:none;" onclick="logoutUser()">Выйти</button>
+                    <button class="btn btn-admin" id="adminPanelBtn" style="display:none;" onclick="openModal('adminModal')">Админ</button>
                 </div>
             </div>
         </header>
@@ -42,25 +51,25 @@
                 <!-- HERO -->
                 <section class="hero">
                     <div class="hero-content">
-                        <div class="hero-tag">LIVE COMMUNITY</div>
-                        <h2>Welcome to <span>Arizona RP</span></h2>
-                        <p>Real-time RolePlay community forum. Changes appear instantly for everyone!</p>
+                        <div class="hero-tag">ЖИВОЕ СООБЩЕСТВО</div>
+                        <h2>Добро пожаловать в <span>Arizona RP</span></h2>
+                        <p>Крупнейшее RolePlay сообщество. Изменения видны всем в реальном времени!</p>
                         <div class="hero-stats">
                             <div class="hero-stat">
                                 <span class="hero-stat-number" id="heroUsers">0</span>
-                                <span class="hero-stat-label">Members</span>
+                                <span class="hero-stat-label">Участников</span>
                             </div>
                             <div class="hero-stat">
                                 <span class="hero-stat-number" id="heroThreads">0</span>
-                                <span class="hero-stat-label">Topics</span>
+                                <span class="hero-stat-label">Тем</span>
                             </div>
                             <div class="hero-stat">
                                 <span class="hero-stat-number" id="heroPosts">0</span>
-                                <span class="hero-stat-label">Posts</span>
+                                <span class="hero-stat-label">Сообщений</span>
                             </div>
                             <div class="hero-stat">
                                 <span class="hero-stat-number" id="heroOnline">0</span>
-                                <span class="hero-stat-label">Online</span>
+                                <span class="hero-stat-label">Онлайн</span>
                             </div>
                         </div>
                     </div>
@@ -76,22 +85,28 @@
                 <div id="forumView">
                     <div id="categoriesView">
                         <div class="section-toolbar">
-                            <h3>Forum Categories</h3>
-                            <span class="section-counter" id="categoriesCount">0 categories</span>
-                            <button class="btn btn-success btn-sm" onclick="refreshForum()">🔄 Refresh</button>
+                            <h3>Разделы форума</h3>
+                            <span class="section-counter" id="categoriesCount">0 разделов</span>
+                            <button class="btn btn-success btn-sm" onclick="refreshForum()">🔄 Обновить</button>
                         </div>
                         <div id="categoriesContainer">
                             <div class="loading-state">
                                 <div class="loading-spinner"></div>
-                                <p>Loading categories...</p>
+                                <p>Загрузка разделов...</p>
                             </div>
                         </div>
                     </div>
 
                     <div id="threadView" style="display:none;">
-                        <button class="btn btn-outline back-btn" onclick="showCategoriesView()">← Back to Categories</button>
+                        <button class="btn btn-outline back-btn" onclick="showCategoriesView()">← Назад к разделам</button>
                         <div id="threadContainer"></div>
                     </div>
+                </div>
+
+                <!-- СТРАНИЦЫ (Rules, Help, Contact, Privacy) -->
+                <div id="pageView" style="display:none;">
+                    <button class="btn btn-outline back-btn" onclick="closePage()">← Назад к форуму</button>
+                    <div id="pageContainer"></div>
                 </div>
             </div>
         </main>
@@ -102,15 +117,16 @@
                 <div class="footer-grid">
                     <div class="footer-brand">
                         <div class="footer-logo">Arizona RP</div>
-                        <p>Real-time RolePlay Community</p>
+                        <p>RolePlay Сообщество</p>
                     </div>
                     <div class="footer-nav">
-                        <a href="#">Rules</a>
-                        <a href="#">Help</a>
-                        <a href="#">Contact</a>
+                        <a href="#" onclick="showPage('rules'); return false;">Правила</a>
+                        <a href="#" onclick="showPage('help'); return false;">Помощь</a>
+                        <a href="#" onclick="showPage('contact'); return false;">Контакты</a>
+                        <a href="#" onclick="showPage('privacy'); return false;">Конфиденциальность</a>
                     </div>
                     <div class="footer-copy">
-                        <p>&copy; 2024 Arizona RP. All rights reserved.</p>
+                        <p>&copy; 2024 Arizona RP. Все права защищены.</p>
                     </div>
                 </div>
             </div>
@@ -121,8 +137,8 @@
     <div class="toast" id="toast">
         <div class="toast-indicator"></div>
         <div class="toast-body">
-            <div class="toast-title" id="toastTitle">Success</div>
-            <div class="toast-message" id="toastMessage">Action completed</div>
+            <div class="toast-title" id="toastTitle">Успех</div>
+            <div class="toast-message" id="toastMessage">Действие выполнено</div>
         </div>
         <button class="toast-close-btn" onclick="closeToast()">×</button>
     </div>
@@ -134,8 +150,8 @@
             <button class="modal-close" onclick="closeModal('loginModal')">×</button>
             <div class="modal-head">
                 <div class="modal-icon">🔐</div>
-                <h2>Sign In</h2>
-                <p>Access your account</p>
+                <h2>Вход в аккаунт</h2>
+                <p>Войдите чтобы продолжить</p>
             </div>
             <form id="loginForm" onsubmit="event.preventDefault(); loginUser();">
                 <div class="field-group">
@@ -143,15 +159,15 @@
                     <input type="email" id="loginEmail" placeholder="you@example.com" required />
                 </div>
                 <div class="field-group">
-                    <label>Password</label>
+                    <label>Пароль</label>
                     <div class="field-password">
-                        <input type="password" id="loginPassword" placeholder="Enter password" required />
-                        <button type="button" class="field-toggle" onclick="togglePassword('loginPassword', this)">Show</button>
+                        <input type="password" id="loginPassword" placeholder="Введите пароль" required />
+                        <button type="button" class="field-toggle" onclick="togglePassword('loginPassword', this)">Показать</button>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+                <button type="submit" class="btn btn-primary btn-block">Войти</button>
             </form>
-            <p class="modal-footer-text">No account? <span onclick="switchModal('loginModal','registerModal')">Create one</span></p>
+            <p class="modal-footer-text">Нет аккаунта? <span onclick="switchModal('loginModal','registerModal')">Создать</span></p>
         </div>
     </div>
 
@@ -162,35 +178,35 @@
             <button class="modal-close" onclick="closeModal('registerModal')">×</button>
             <div class="modal-head">
                 <div class="modal-icon">📝</div>
-                <h2>Create Account</h2>
-                <p>Join the community</p>
+                <h2>Создать аккаунт</h2>
+                <p>Присоединяйтесь к сообществу</p>
             </div>
             <form id="registerForm" onsubmit="event.preventDefault(); registerUser();">
                 <div class="field-group">
-                    <label>Username</label>
-                    <input type="text" id="regUsername" placeholder="Choose username" required />
+                    <label>Имя пользователя</label>
+                    <input type="text" id="regUsername" placeholder="Придумайте никнейм" required />
                 </div>
                 <div class="field-group">
                     <label>Email</label>
                     <input type="email" id="regEmail" placeholder="you@example.com" required />
                 </div>
                 <div class="field-group">
-                    <label>Password (min 6 characters)</label>
+                    <label>Пароль (минимум 6 символов)</label>
                     <div class="field-password">
-                        <input type="password" id="regPassword" placeholder="Create password" required />
-                        <button type="button" class="field-toggle" onclick="togglePassword('regPassword', this)">Show</button>
+                        <input type="password" id="regPassword" placeholder="Придумайте пароль" required />
+                        <button type="button" class="field-toggle" onclick="togglePassword('regPassword', this)">Показать</button>
                     </div>
                 </div>
                 <div class="field-group">
-                    <label>Confirm Password</label>
+                    <label>Подтвердите пароль</label>
                     <div class="field-password">
-                        <input type="password" id="regPasswordConfirm" placeholder="Repeat password" required />
-                        <button type="button" class="field-toggle" onclick="togglePassword('regPasswordConfirm', this)">Show</button>
+                        <input type="password" id="regPasswordConfirm" placeholder="Повторите пароль" required />
+                        <button type="button" class="field-toggle" onclick="togglePassword('regPasswordConfirm', this)">Показать</button>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-success btn-block">Create Account</button>
+                <button type="submit" class="btn btn-success btn-block">Создать аккаунт</button>
             </form>
-            <p class="modal-footer-text">Already have an account? <span onclick="switchModal('registerModal','loginModal')">Sign In</span></p>
+            <p class="modal-footer-text">Уже есть аккаунт? <span onclick="switchModal('registerModal','loginModal')">Войти</span></p>
         </div>
     </div>
 
@@ -201,19 +217,19 @@
             <button class="modal-close" onclick="closeModal('adminModal')">×</button>
             <div class="modal-head">
                 <div class="modal-icon">⚡</div>
-                <h2>Administration Panel</h2>
-                <p>Manage forum in real-time</p>
+                <h2>Админ-панель</h2>
+                <p>Управление форумом в реальном времени</p>
             </div>
 
             <div class="admin-verify">
                 <div class="field-group">
-                    <label>Admin Access Code</label>
+                    <label>Код доступа администратора</label>
                     <div class="field-password">
-                        <input type="password" id="adminPassword" placeholder="Enter admin code" />
-                        <button type="button" class="field-toggle" onclick="togglePassword('adminPassword', this)">Show</button>
+                        <input type="password" id="adminPassword" placeholder="Введите код 1267" />
+                        <button type="button" class="field-toggle" onclick="togglePassword('adminPassword', this)">Показать</button>
                     </div>
                 </div>
-                <button class="btn btn-admin btn-block" onclick="verifyAdmin()">Grant Admin Privileges</button>
+                <button class="btn btn-admin btn-block" onclick="verifyAdmin()">Получить права администратора</button>
             </div>
 
             <div class="divider"></div>
@@ -221,38 +237,38 @@
             <div id="adminActions" style="display:none;">
                 <!-- Create Category -->
                 <div class="admin-section">
-                    <h3>Create Category</h3>
+                    <h3>Создать раздел</h3>
                     <div class="admin-grid">
                         <div class="field-group">
-                            <label>Category Name</label>
-                            <input type="text" id="newCategoryName" placeholder="e.g., General Discussion" />
+                            <label>Название раздела</label>
+                            <input type="text" id="newCategoryName" placeholder="Например: Общие обсуждения" />
                         </div>
                         <div class="field-group">
-                            <label>Description</label>
-                            <input type="text" id="newCategoryDesc" placeholder="Brief description" />
+                            <label>Описание</label>
+                            <input type="text" id="newCategoryDesc" placeholder="Краткое описание" />
                         </div>
                     </div>
-                    <button class="btn btn-success" onclick="addCategory()">+ Create Category</button>
+                    <button class="btn btn-success" onclick="addCategory()">+ Создать раздел</button>
                 </div>
 
                 <div class="divider"></div>
 
                 <!-- Create Thread -->
                 <div class="admin-section">
-                    <h3>Create Topic</h3>
+                    <h3>Создать тему</h3>
                     <div class="field-group">
-                        <label>Select Category</label>
+                        <label>Выберите раздел</label>
                         <select id="adminCategorySelect"></select>
                     </div>
                     <div class="field-group">
-                        <label>Topic Title</label>
-                        <input type="text" id="newThreadTitle" placeholder="Enter topic title" />
+                        <label>Название темы</label>
+                        <input type="text" id="newThreadTitle" placeholder="Введите название" />
                     </div>
                     <div class="field-group">
-                        <label>Content</label>
-                        <textarea id="newThreadContent" placeholder="Write your topic..." rows="5"></textarea>
+                        <label>Содержание</label>
+                        <textarea id="newThreadContent" placeholder="Напишите текст..." rows="5"></textarea>
                     </div>
-                    <button class="btn btn-primary" onclick="addThread()">+ Create Topic</button>
+                    <button class="btn btn-primary" onclick="addThread()">+ Создать тему</button>
                 </div>
             </div>
         </div>
