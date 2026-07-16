@@ -5,166 +5,244 @@
     'use strict';
 
     // ============================================
-    // 1. БЛОКИРОВКА ВСЕХ КЛАВИШ ДЛЯ ОТКРЫТИЯ DEVTOOLS
+    // 1. ПОЛНАЯ БЛОКИРОВКА КОНСОЛИ
     // ============================================
+    
+    // Заменяем все методы console на пустышки
+    const noop = function() {};
+    const consoleMethods = [
+        'log', 'warn', 'error', 'info', 'debug', 'trace', 
+        'dir', 'dirxml', 'group', 'groupEnd', 'time', 'timeEnd',
+        'assert', 'count', 'clear', 'table', 'groupCollapsed',
+        'profile', 'profileEnd'
+    ];
+    
+    consoleMethods.forEach(method => {
+        if (console[method]) {
+            console[method] = noop;
+        }
+    });
+
+    // ============================================
+    // 2. БЛОКИРОВКА ИЗМЕНЕНИЯ ПЕРЕМЕННЫХ
+    // ============================================
+    
+    // Блокируем isAdmin
+    Object.defineProperty(window, 'isAdmin', {
+        get: function() { 
+            showProtectionMessage();
+            return false; 
+        },
+        set: function() { 
+            showProtectionMessage();
+            return false; 
+        },
+        configurable: false,
+        enumerable: true
+    });
+
+    // Блокируем currentUser
+    Object.defineProperty(window, 'currentUser', {
+        get: function() { 
+            showProtectionMessage();
+            return null; 
+        },
+        set: function() { 
+            showProtectionMessage();
+            return false; 
+        },
+        configurable: false,
+        enumerable: true
+    });
+
+    // Блокируем firebase
+    Object.defineProperty(window, 'firebase', {
+        get: function() { 
+            showProtectionMessage();
+            return null; 
+        },
+        set: function() { 
+            showProtectionMessage();
+            return false; 
+        },
+        configurable: false,
+        enumerable: true
+    });
+
+    // Блокируем auth
+    Object.defineProperty(window, 'auth', {
+        get: function() { 
+            showProtectionMessage();
+            return null; 
+        },
+        set: function() { 
+            showProtectionMessage();
+            return false; 
+        },
+        configurable: false,
+        enumerable: true
+    });
+
+    // Блокируем db
+    Object.defineProperty(window, 'db', {
+        get: function() { 
+            showProtectionMessage();
+            return null; 
+        },
+        set: function() { 
+            showProtectionMessage();
+            return false; 
+        },
+        configurable: false,
+        enumerable: true
+    });
+
+    // Блокируем userRank
+    Object.defineProperty(window, 'userRank', {
+        get: function() { 
+            showProtectionMessage();
+            return 'player'; 
+        },
+        set: function() { 
+            showProtectionMessage();
+            return false; 
+        },
+        configurable: false,
+        enumerable: true
+    });
+
+    // ============================================
+    // 3. БЛОКИРОВКА eval И Function
+    // ============================================
+    
+    window.eval = function() {
+        showProtectionMessage();
+        return null;
+    };
+    
+    window.Function = function() {
+        showProtectionMessage();
+        return null;
+    };
+
+    // ============================================
+    // 4. БЛОКИРОВКА ВСЕХ КЛАВИШ ДЛЯ ОТКРЫТИЯ DEVTOOLS
+    // ============================================
+    
     const blockedKeys = {
         123: true, // F12
         116: true, // F5
-        // Ctrl+Shift+I (Windows/Linux)
-        '73_Control_Shift': true,
-        // Ctrl+Shift+J (Windows/Linux)
-        '74_Control_Shift': true,
-        // Ctrl+U (Windows/Linux)
-        '85_Control': true,
-        // Ctrl+Shift+C (Windows/Linux)
-        '67_Control_Shift': true,
-        // Ctrl+R (перезагрузка)
-        '82_Control': true,
-        // Ctrl+Shift+R (жесткая перезагрузка)
-        '82_Control_Shift': true,
-        // Ctrl+Shift+Delete (очистка кеша)
-        '46_Control_Shift': true,
-        // Ctrl+Shift+K (консоль Firefox)
-        '75_Control_Shift': true,
-        // Ctrl+Shift+E (инспектор Firefox)
-        '69_Control_Shift': true,
-        // Ctrl+S (сохранить страницу)
-        '83_Control': true,
-        // Ctrl+P (печать)
-        '80_Control': true,
-        // Ctrl+Shift+P (командная палитра)
-        '80_Control_Shift': true,
-        // Ctrl+Shift+F (поиск)
-        '70_Control_Shift': true,
-        // Ctrl+Shift+G (поиск следующего)
-        '71_Control_Shift': true,
-        // Ctrl+F (поиск)
-        '70_Control': true,
-        // F3 (поиск)
-        114: true,
-        // Ctrl+O (открыть файл)
-        '79_Control': true,
-        // Ctrl+W (закрыть вкладку)
-        '87_Control': true,
-        // Ctrl+T (новая вкладка)
-        '84_Control': true,
-        // Ctrl+N (новое окно)
-        '78_Control': true,
-        // Ctrl+Shift+N (инкогнито)
-        '78_Control_Shift': true,
-        // Ctrl+H (история)
-        '72_Control': true,
-        // Ctrl+J (загрузки)
-        '74_Control': true,
-        // Ctrl+D (добавить в закладки)
-        '68_Control': true,
-        // Ctrl+Shift+B (панель закладок)
-        '66_Control_Shift': true,
-        // Ctrl+Shift+O (менеджер закладок)
-        '79_Control_Shift': true,
-        // Ctrl+Shift+T (восстановить вкладку)
-        '84_Control_Shift': true,
-        // Ctrl+Shift+W (закрыть окно)
-        '87_Control_Shift': true,
-        // F1 (помощь)
-        112: true,
-        // F2 (переименовать)
-        113: true,
-        // F4 (адресная строка)
-        115: true,
-        // F6 (адресная строка)
-        117: true,
-        // F7 (курсор)
-        118: true,
-        // F10 (меню)
-        121: true,
-        // F11 (полный экран)
-        122: true,
-        // Ctrl+E (поиск в адресной строке)
-        '69_Control': true,
-        // Ctrl+L (адресная строка)
-        '76_Control': true,
-        // Ctrl+K (поиск)
-        '75_Control': true,
-        // Alt+D (адресная строка Firefox)
-        '68_Alt': true,
-        // Alt+F (меню Firefox)
-        '70_Alt': true,
-        // Alt+E (меню Edge)
-        '69_Alt': true,
-        // Alt+Space (системное меню)
-        '32_Alt': true,
+        '73_Control_Shift': true, // Ctrl+Shift+I
+        '74_Control_Shift': true, // Ctrl+Shift+J
+        '85_Control': true, // Ctrl+U
+        '67_Control_Shift': true, // Ctrl+Shift+C
+        '82_Control': true, // Ctrl+R
+        '82_Control_Shift': true, // Ctrl+Shift+R
+        '46_Control_Shift': true, // Ctrl+Shift+Delete
+        '75_Control_Shift': true, // Ctrl+Shift+K (Firefox)
+        '69_Control_Shift': true, // Ctrl+Shift+E (Firefox)
+        '83_Control': true, // Ctrl+S
+        '80_Control': true, // Ctrl+P
+        '70_Control_Shift': true, // Ctrl+Shift+F
+        '71_Control_Shift': true, // Ctrl+Shift+G
+        '70_Control': true, // Ctrl+F
+        114: true, // F3
+        '79_Control': true, // Ctrl+O
+        '87_Control': true, // Ctrl+W
+        '84_Control': true, // Ctrl+T
+        '78_Control': true, // Ctrl+N
+        '78_Control_Shift': true, // Ctrl+Shift+N
+        '72_Control': true, // Ctrl+H
+        '74_Control': true, // Ctrl+J
+        '68_Control': true, // Ctrl+D
+        '66_Control_Shift': true, // Ctrl+Shift+B
+        '79_Control_Shift': true, // Ctrl+Shift+O
+        '84_Control_Shift': true, // Ctrl+Shift+T
+        '87_Control_Shift': true, // Ctrl+Shift+W
+        112: true, // F1
+        113: true, // F2
+        115: true, // F4
+        117: true, // F6
+        118: true, // F7
+        121: true, // F10
+        122: true, // F11
+        '69_Control': true, // Ctrl+E
+        '76_Control': true, // Ctrl+L
+        '75_Control': true, // Ctrl+K
+        '68_Alt': true, // Alt+D (Firefox)
+        '70_Alt': true, // Alt+F (Firefox)
+        '69_Alt': true, // Alt+E (Edge)
+        '32_Alt': true, // Alt+Space
     };
 
     // Mac комбинации
     const blockedKeysMac = {
-        '73_Meta_Alt': true,    // Cmd+Option+I
-        '74_Meta_Alt': true,    // Cmd+Option+J
-        '85_Meta': true,        // Cmd+U
-        '73_Meta_Shift': true,  // Cmd+Shift+I
-        '67_Meta_Alt': true,    // Cmd+Option+C
-        '83_Meta': true,        // Cmd+S
-        '80_Meta': true,        // Cmd+P
-        '82_Meta': true,        // Cmd+R
-        '82_Meta_Shift': true,  // Cmd+Shift+R
-        '87_Meta': true,        // Cmd+W
-        '84_Meta': true,        // Cmd+T
-        '78_Meta': true,        // Cmd+N
-        '78_Meta_Shift': true,  // Cmd+Shift+N
-        '72_Meta': true,        // Cmd+H
-        '74_Meta': true,        // Cmd+J
-        '68_Meta': true,        // Cmd+D
-        '79_Meta_Shift': true,  // Cmd+Shift+O
-        '84_Meta_Shift': true,  // Cmd+Shift+T
-        '87_Meta_Shift': true,  // Cmd+Shift+W
-        '76_Meta': true,        // Cmd+L
-        '69_Meta': true,        // Cmd+E
-        '75_Meta': true,        // Cmd+K
-        '71_Meta_Shift': true,  // Cmd+Shift+G
-        '70_Meta_Shift': true,  // Cmd+Shift+F
-        '70_Meta': true,        // Cmd+F
-        '63_Meta': true,        // Cmd+? (помощь)
-        '65_Meta': true,        // Cmd+A (выделить всё)
-        '67_Meta': true,        // Cmd+C (копировать)
-        '86_Meta': true,        // Cmd+V (вставить)
-        '88_Meta': true,        // Cmd+X (вырезать)
-        '90_Meta': true,        // Cmd+Z (отмена)
-        '90_Meta_Shift': true,  // Cmd+Shift+Z (повтор)
+        '73_Meta_Alt': true, // Cmd+Option+I
+        '74_Meta_Alt': true, // Cmd+Option+J
+        '85_Meta': true, // Cmd+U
+        '73_Meta_Shift': true, // Cmd+Shift+I
+        '67_Meta_Alt': true, // Cmd+Option+C
+        '83_Meta': true, // Cmd+S
+        '80_Meta': true, // Cmd+P
+        '82_Meta': true, // Cmd+R
+        '82_Meta_Shift': true, // Cmd+Shift+R
+        '87_Meta': true, // Cmd+W
+        '84_Meta': true, // Cmd+T
+        '78_Meta': true, // Cmd+N
+        '78_Meta_Shift': true, // Cmd+Shift+N
+        '72_Meta': true, // Cmd+H
+        '74_Meta': true, // Cmd+J
+        '68_Meta': true, // Cmd+D
+        '79_Meta_Shift': true, // Cmd+Shift+O
+        '84_Meta_Shift': true, // Cmd+Shift+T
+        '87_Meta_Shift': true, // Cmd+Shift+W
+        '76_Meta': true, // Cmd+L
+        '69_Meta': true, // Cmd+E
+        '75_Meta': true, // Cmd+K
+        '71_Meta_Shift': true, // Cmd+Shift+G
+        '70_Meta_Shift': true, // Cmd+Shift+F
+        '70_Meta': true, // Cmd+F
+        '63_Meta': true, // Cmd+? (помощь)
+        '65_Meta': true, // Cmd+A
+        '67_Meta': true, // Cmd+C
+        '86_Meta': true, // Cmd+V
+        '88_Meta': true, // Cmd+X
+        '90_Meta': true, // Cmd+Z
+        '90_Meta_Shift': true, // Cmd+Shift+Z
     };
 
-    // Блокировка клавиш
     document.addEventListener('keydown', function(e) {
-        const key = e.keyCode || e.which;
+        const key = e.keyCode || e.which || 0;
         const ctrl = e.ctrlKey || e.metaKey;
         const shift = e.shiftKey;
         const alt = e.altKey;
-        
-        // Проверяем Windows/Linux
+
+        // Проверка Windows/Linux
         let comboKey = key.toString();
         if (ctrl) comboKey += '_Control';
         if (shift) comboKey += '_Shift';
         if (alt) comboKey += '_Alt';
-        
+
         if (blockedKeys[key] || blockedKeys[comboKey]) {
             e.preventDefault();
             e.stopPropagation();
             showProtectionMessage();
             return false;
         }
-        
-        // Проверяем Mac
+
+        // Проверка Mac
         let comboKeyMac = key.toString();
         if (e.metaKey) comboKeyMac += '_Meta';
         if (alt) comboKeyMac += '_Alt';
         if (shift) comboKeyMac += '_Shift';
-        
+
         if (blockedKeysMac[comboKeyMac]) {
             e.preventDefault();
             e.stopPropagation();
             showProtectionMessage();
             return false;
         }
-        
+
         // Дополнительно: Ctrl+Shift+цифра
         if (ctrl && shift && key >= 48 && key <= 57) {
             e.preventDefault();
@@ -172,8 +250,8 @@
             showProtectionMessage();
             return false;
         }
-        
-        // Alt+любая клавиша (кроме пробела)
+
+        // Alt+любая клавиша (кроме пробела и Alt)
         if (alt && key !== 32 && key !== 18) {
             e.preventDefault();
             e.stopPropagation();
@@ -183,8 +261,9 @@
     });
 
     // ============================================
-    // 2. БЛОКИРОВКА ПРАВОЙ КНОПКИ МЫШИ
+    // 5. БЛОКИРОВКА ПРАВОЙ КНОПКИ МЫШИ
     // ============================================
+    
     document.addEventListener('contextmenu', function(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -195,23 +274,31 @@
     // Блокировка долгого нажатия (мобильные)
     let longPressTimer = null;
     document.addEventListener('touchstart', function(e) {
+        if (longPressTimer) clearTimeout(longPressTimer);
         longPressTimer = setTimeout(function() {
             e.preventDefault();
             showProtectionMessage();
         }, 500);
     }, { passive: false });
-    
+
     document.addEventListener('touchend', function(e) {
-        clearTimeout(longPressTimer);
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
     });
-    
+
     document.addEventListener('touchmove', function(e) {
-        clearTimeout(longPressTimer);
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
     });
 
     // ============================================
-    // 3. БЛОКИРОВКА ВЫДЕЛЕНИЯ, КОПИРОВАНИЯ, ПЕРЕТАСКИВАНИЯ
+    // 6. БЛОКИРОВКА ВЫДЕЛЕНИЯ, КОПИРОВАНИЯ, ПЕРЕТАСКИВАНИЯ
     // ============================================
+    
     document.addEventListener('selectstart', function(e) {
         e.preventDefault();
         return false;
@@ -246,23 +333,25 @@
     });
 
     // ============================================
-    // 4. ЗАЩИТА ОТ ОТКРЫТИЯ ЧЕРЕЗ АДРЕСНУЮ СТРОКУ
+    // 7. ЗАЩИТА ОТ ОТКРЫТИЯ В ФРЕЙМЕ (Clickjacking)
     // ============================================
-    // Блокировка chrome://inspect
-    if (window.chrome && window.chrome.devtools) {
-        window.chrome.devtools = undefined;
-    }
     
-    // Блокировка about:debugging (Firefox)
-    if (window.navigator && window.navigator.userAgent.includes('Firefox')) {
-        Object.defineProperty(window, 'devtools', {
-            get: function() { showProtectionMessage(); return null; }
-        });
+    if (window.top !== window.self) {
+        window.top.location = window.self.location;
     }
 
     // ============================================
-    // 5. ОБХОД ОТКРЫТИЯ DEVTOOLS ЧЕРЕЗ РАЗМЕР ОКНА
+    // 8. ЗАЩИТА ОТ СНИФФИНГА
     // ============================================
+    
+    Object.defineProperty(navigator, 'webdriver', {
+        get: function() { return false; }
+    });
+
+    // ============================================
+    // 9. ОБХОД ОТКРЫТИЯ DEVTOOLS ЧЕРЕЗ РАЗМЕР ОКНА
+    // ============================================
+    
     let devtoolsOpen = false;
     let protectionTriggered = false;
 
@@ -282,48 +371,13 @@
         }
     };
     
-    // Проверяем каждые 1.5 секунды
     setInterval(checkDevTools, 1500);
 
     // ============================================
-    // 6. ЗАЩИТА ОТ ОТКРЫТИЯ В ФРЕЙМЕ (Clickjacking)
+    // 10. ПОЛНАЯ ЗАЩИТА ПРИ ОБНАРУЖЕНИИ
     // ============================================
-    if (window.top !== window.self) {
-        window.top.location = window.self.location;
-    }
-
-    // ============================================
-    // 7. ЗАЩИТА ОТ СНИФФИНГА
-    // ============================================
-    Object.defineProperty(navigator, 'webdriver', {
-        get: function() { return false; }
-    });
-
-    // ============================================
-    // 8. ЗАЩИТА ОТ ИНСПЕКТИРОВАНИЯ ЧЕРЕЗ ЭЛЕМЕНТЫ
-    // ============================================
-    // Скрываем все элементы, которые могут быть использованы для инспекции
-    document.addEventListener('DOMContentLoaded', function() {
-        // Добавляем защитный слой поверх всего
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 99999;
-            background: transparent;
-        `;
-        document.body.appendChild(overlay);
-    });
-
-    // ============================================
-    // 9. ПОЛНАЯ ЗАЩИТА ПРИ ОБНАРУЖЕНИИ
-    // ============================================
+    
     function triggerFullProtection() {
-        // Очищаем страницу и показываем сообщение
         document.body.innerHTML = `
             <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a1a;color:#e94560;font-family:'Segoe UI',sans-serif;flex-direction:column;gap:20px;text-align:center;padding:20px;">
                 <h1 style="font-size:64px;margin:0;">🚫</h1>
@@ -332,7 +386,6 @@
                 <button onclick="location.reload()" style="padding:12px 32px;background:#e94560;border:none;border-radius:8px;color:white;font-size:16px;cursor:pointer;font-weight:600;">↻ Обновить страницу</button>
             </div>
         `;
-        // Удаляем все скрипты, кроме себя
         document.querySelectorAll('script').forEach(script => {
             if (script.src && !script.src.includes('protection.js')) {
                 script.remove();
@@ -341,13 +394,12 @@
     }
 
     // ============================================
-    // 10. ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ
+    // 11. ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ
     // ============================================
+    
     function showProtectionMessage() {
-        // Вибрация
         if (navigator.vibrate) navigator.vibrate(100);
         
-        // Показываем тост, если есть
         const toast = document.getElementById('toast');
         if (toast) {
             const indicator = document.querySelector('.toast-indicator');
@@ -367,8 +419,9 @@
     }
 
     // ============================================
-    // 11. ЗАЩИТА ОТ ПЕРЕЗАГРУЗКИ
+    // 12. ЗАЩИТА ОТ ПЕРЕЗАГРУЗКИ
     // ============================================
+    
     let reloadAttempts = 0;
     window.addEventListener('beforeunload', function(e) {
         reloadAttempts++;
@@ -380,19 +433,42 @@
     });
 
     // ============================================
-    // 12. ЗАЩИТА ОТ ИЗМЕНЕНИЯ URL ВРУЧНУЮ
+    // 13. ЗАЩИТА ОТ ИЗМЕНЕНИЯ URL ВРУЧНУЮ
     // ============================================
+    
     let lastUrl = window.location.href;
     setInterval(() => {
         if (window.location.href !== lastUrl) {
             const url = window.location.href;
-            // Если пытаются перейти на about:, chrome:, edge:, javascript:
             if (url.match(/^(about|chrome|edge|javascript):/)) {
                 window.location.href = '/';
             }
             lastUrl = window.location.href;
         }
     }, 500);
+
+    // ============================================
+    // 14. БЛОКИРОВКА ОТКРЫТИЯ ЧЕРЕЗ АДРЕСНУЮ СТРОКУ
+    // ============================================
+    
+    if (window.chrome && window.chrome.devtools) {
+        window.chrome.devtools = undefined;
+    }
+    
+    if (window.navigator && window.navigator.userAgent.includes('Firefox')) {
+        Object.defineProperty(window, 'devtools', {
+            get: function() { showProtectionMessage(); return null; }
+        });
+    }
+
+    // ============================================
+    // 15. БЛОКИРОВКА import (динамические импорты)
+    // ============================================
+    
+    window.import = function() {
+        showProtectionMessage();
+        return null;
+    };
 
     console.log('🛡️ Полная защита активирована!');
 })();

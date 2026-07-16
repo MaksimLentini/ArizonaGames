@@ -6,8 +6,35 @@
     <title>Forum Sell</title>
     <link rel="stylesheet" href="style.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    
     <!-- 🛡️ ЗАЩИТА САЙТА -->
     <script src="protection.js"></script>
+    
+    <!-- 🛡️ ЗАЩИТА ОТ ПОДМЕНЫ ПЕРЕМЕННЫХ -->
+    <script>
+        Object.defineProperty(window, '__REACT_DEVTOOLS_GLOBAL_HOOK__', {
+            get: function() { return null; }
+        });
+        
+        if (window.firebase) {
+            Object.defineProperty(window, 'firebase', {
+                get: function() { return null; },
+                set: function() { return false; }
+            });
+        }
+        
+        Object.defineProperty(window, 'auth', {
+            get: function() { return null; },
+            set: function() { return false; }
+        });
+        
+        Object.defineProperty(window, 'db', {
+            get: function() { return null; },
+            set: function() { return false; }
+        });
+        
+        console.log('🛡️ Защита от подмены переменных активирована!');
+    </script>
 </head>
 <body>
     <div id="app">
@@ -163,6 +190,20 @@
                 </div>
             </div>
         </footer>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- 📊 УВЕДОМЛЕНИЕ О СБОРЕ ДАННЫХ (ДОБАВЛЕНО!) -->
+    <!-- ============================================ -->
+    <div id="cookieConsent" style="position:fixed;bottom:0;left:0;right:0;background:#14142b;border-top:2px solid #6c5ce7;padding:12px 20px;z-index:9999;display:none;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;">
+        <span style="font-size:13px;color:#bbbbdd;">
+            🛡️ Мы собираем IP и данные о браузере для улучшения работы форума. 
+            Данные хранятся в зашифрованном виде и не передаются третьим лицам.
+        </span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="localStorage.setItem('userConsent','accepted');document.getElementById('cookieConsent').style.display='none';">✅ Принять</button>
+            <button class="btn btn-outline btn-sm" onclick="localStorage.setItem('userConsent','declined');document.getElementById('cookieConsent').style.display='none';">❌ Отказаться</button>
+        </div>
     </div>
 
     <!-- TOAST -->
@@ -383,5 +424,14 @@
     <!-- FIREBASE -->
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="script.js"></script>
+    
+    <!-- Показываем уведомление о сборе данных -->
+    <script>
+        setTimeout(() => {
+            if (!localStorage.getItem('userConsent')) {
+                document.getElementById('cookieConsent').style.display = 'flex';
+            }
+        }, 1500);
+    </script>
 </body>
 </html>

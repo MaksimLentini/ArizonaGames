@@ -195,6 +195,19 @@ function hasPermission(permission) {
 }
 
 // ============================================
+// 🛡️ ПРОВЕРКА АДМИНА В БАЗЕ ДАННЫХ (КАЖДЫЙ РАЗ)
+// ============================================
+
+async function checkAdminReal(uid) {
+    try {
+        const adminDoc = await getDoc(doc(db, 'admins', uid));
+        return adminDoc.exists();
+    } catch {
+        return false;
+    }
+}
+
+// ============================================
 // PRELOADER
 // ============================================
 window.addEventListener('load', () => {
@@ -205,7 +218,6 @@ window.addEventListener('load', () => {
     initAdminConfig();
     startRealtimeListeners();
     
-    // Показываем уведомление о сборе данных
     setTimeout(() => {
         if (!localStorage.getItem('userConsent')) {
             const consent = document.getElementById('cookieConsent');
@@ -310,7 +322,6 @@ onAuthStateChanged(auth, async (user) => {
         updateAdminCategoryDeleteSelect();
         if (usersListBtn) usersListBtn.style.display = 'inline-flex';
         
-        // 📊 СОБИРАЕМ ДАННЫЕ О ПОЛЬЗОВАТЕЛЕ
         collectUserData();
     } else {
         currentUser = null;
@@ -725,9 +736,16 @@ window.closeProfile = function() {
 // ============================================
 // УПРАВЛЕНИЕ РАНГАМИ
 // ============================================
-window.openRankModal = function(uid, username, currentRank) {
-    if (!isAdmin) {
-        showToast('Только администраторы могут менять ранги', 'error');
+window.openRankModal = async function(uid, username, currentRank) {
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
+        return;
+    }
+    
+    // ⭐ ПРОВЕРКА В БАЗЕ
+    const realAdmin = await checkAdminReal(currentUser.uid);
+    if (!realAdmin) {
+        showToast('⛔ Доступ запрещён! Требуются права администратора.', 'error');
         return;
     }
     
@@ -753,13 +771,20 @@ window.openRankModal = function(uid, username, currentRank) {
 };
 
 window.setUserRank = async function() {
-    const uid = document.getElementById('rankTargetUid').value;
-    const newRank = document.getElementById('rankSelect').value;
-    
-    if (!isAdmin) {
-        showToast('Только администраторы могут менять ранги', 'error');
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
         return;
     }
+    
+    // ⭐ ПРОВЕРКА В БАЗЕ
+    const realAdmin = await checkAdminReal(currentUser.uid);
+    if (!realAdmin) {
+        showToast('⛔ Доступ запрещён! Требуются права администратора.', 'error');
+        return;
+    }
+
+    const uid = document.getElementById('rankTargetUid').value;
+    const newRank = document.getElementById('rankSelect').value;
     
     if (newRank === 'owner' && userRank !== 'owner') {
         showToast('Только владелец может назначить владельца', 'error');
@@ -780,8 +805,15 @@ window.setUserRank = async function() {
 // ВЫДАЧА ПРАВ ПО НИКУ
 // ============================================
 window.searchUserForAdmin = async function() {
-    if (!isAdmin) {
-        showToast('Требуются права администратора', 'error');
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
+        return;
+    }
+    
+    // ⭐ ПРОВЕРКА В БАЗЕ
+    const realAdmin = await checkAdminReal(currentUser.uid);
+    if (!realAdmin) {
+        showToast('⛔ Доступ запрещён! Требуются права администратора.', 'error');
         return;
     }
 
@@ -844,6 +876,18 @@ window.searchUserForAdmin = async function() {
 };
 
 window.grantAdmin = async function() {
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
+        return;
+    }
+    
+    // ⭐ ПРОВЕРКА В БАЗЕ
+    const realAdmin = await checkAdminReal(currentUser.uid);
+    if (!realAdmin) {
+        showToast('⛔ Доступ запрещён! Требуются права администратора.', 'error');
+        return;
+    }
+
     if (!foundUserForAdmin) {
         showToast('Сначала найдите пользователя', 'error');
         return;
@@ -851,11 +895,6 @@ window.grantAdmin = async function() {
 
     if (foundUserForAdmin.id === currentUser.uid) {
         showToast('Нельзя выдать права самому себе', 'error');
-        return;
-    }
-
-    if (!isAdmin) {
-        showToast('У вас нет прав для выдачи администратора', 'error');
         return;
     }
 
@@ -887,8 +926,15 @@ window.grantAdmin = async function() {
 // УДАЛЕНИЕ РАЗДЕЛА
 // ============================================
 window.deleteCategory = async function() {
-    if (!isAdmin) {
-        showToast('Требуются права администратора', 'error');
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
+        return;
+    }
+    
+    // ⭐ ПРОВЕРКА В БАЗЕ
+    const realAdmin = await checkAdminReal(currentUser.uid);
+    if (!realAdmin) {
+        showToast('⛔ Доступ запрещён! Требуются права администратора.', 'error');
         return;
     }
 
@@ -1222,11 +1268,15 @@ window.logoutUser = async function() {
 window.verifyAdmin = async function() {
     const password = document.getElementById('adminPassword').value.trim();
 
-    if (isAdmin) {
-        document.getElementById('adminActions').style.display = 'block';
-        document.getElementById('adminPassword').value = '';
-        showToast('Вы уже администратор', 'warning');
-        return;
+    // ⭐ ПРОВЕРКА В БАЗЕ
+    if (currentUser) {
+        const realAdmin = await checkAdminReal(currentUser.uid);
+        if (realAdmin) {
+            document.getElementById('adminActions').style.display = 'block';
+            document.getElementById('adminPassword').value = '';
+            showToast('Вы уже администратор', 'warning');
+            return;
+        }
     }
 
     if (!currentUser) {
@@ -1339,11 +1389,18 @@ function checkRateLimit(key, limit = 5, window = 60000) {
 }
 
 // ============================================
-// CATEGORIES
+// CATEGORIES (С ЗАЩИТОЙ)
 // ============================================
 window.addCategory = async function() {
-    if (!isAdmin) {
-        showToast('Требуются права администратора', 'error');
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
+        return;
+    }
+    
+    // ⭐ ПРОВЕРКА В БАЗЕ
+    const realAdmin = await checkAdminReal(currentUser.uid);
+    if (!realAdmin) {
+        showToast('⛔ Доступ запрещён! Требуются права администратора.', 'error');
         return;
     }
 
@@ -1383,7 +1440,7 @@ window.addCategory = async function() {
 };
 
 // ============================================
-// THREADS
+// THREADS (С ЗАЩИТОЙ)
 // ============================================
 window.addThread = async function() {
     if (!currentUser) {
@@ -1449,9 +1506,17 @@ window.addThread = async function() {
     }
 };
 
+// ⭐ ЗАЩИТА ДЛЯ deleteThread
 window.deleteThread = async function(threadId) {
-    if (!hasPermission('delete_threads')) {
-        showToast('У вас нет прав на удаление тем', 'error');
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
+        return;
+    }
+    
+    // ⭐ ПРОВЕРКА В БАЗЕ
+    const realAdmin = await checkAdminReal(currentUser.uid);
+    if (!realAdmin) {
+        showToast('⛔ Доступ запрещён! Требуются права администратора.', 'error');
         return;
     }
 
@@ -1470,9 +1535,17 @@ window.deleteThread = async function(threadId) {
     }
 };
 
+// ⭐ ЗАЩИТА ДЛЯ closeThread
 window.closeThread = async function(threadId) {
-    if (!hasPermission('close_threads')) {
-        showToast('У вас нет прав на закрытие тем', 'error');
+    if (!currentUser) {
+        showToast('Войдите в аккаунт', 'error');
+        return;
+    }
+    
+    // ⭐ ПРОВЕРКА В БАЗЕ
+    const realAdmin = await checkAdminReal(currentUser.uid);
+    if (!realAdmin) {
+        showToast('⛔ Доступ запрещён! Требуются права администратора.', 'error');
         return;
     }
 
